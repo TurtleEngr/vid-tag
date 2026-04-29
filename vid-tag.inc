@@ -1,6 +1,6 @@
 set -u
 
-export cVer=1.1
+export cVer=1.0
 export cOutputDir
 
 declare -lx gpEventId
@@ -312,7 +312,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-cVer=1.1
+cVer=1.0
 
 =cut
 

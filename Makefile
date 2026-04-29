@@ -1,6 +1,22 @@
 # Makefile for vid-tag app
 
+# --------------------
+# Macros
 cVer = 1.0
+
+# --------------------
+# Main targets
+
+usage:
+	@echo 'Usage:'
+	@echo 'clean      - remove all backup files'
+	@echo 'dist-clean - remove all built files'
+	@echo 'update     - check for newer dependent files'
+	@echo 'build      - Update README and update cVer in files'
+	@echo 'package    - create the package zip file'
+	@echo 'release    - copy package to release server'
+	@echo 'package-test - create the test package zip file'
+	@echo 'release-test - copy test package to release server'
 
 clean :
 	find . -type f -name '*~' -exec rm {} \;
@@ -24,12 +40,12 @@ release : package
 	@echo "You must have a user on moria"
 	git tag -f v$(cVer)
 	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
-	rsync pkg/vid-tag-$(cVer).zip moria:/rel/released/software/own/vid-tag/
+	rsync -aP pkg/vid-tag-$(cVer).zip moria:/rel/released/software/own/vid-tag/
 
 release-test : release package-test
 	@echo "You must have a user on moria"
 	git tag -f v$(cVer)
-	rsync pkg/vid-tag-test-input.zip moria:/rel/released/software/own/vid-tag/
+	rsync -aP pkg/vid-tag-test-input.zip moria:/rel/released/software/own/vid-tag/
 
 # --------------------
 # Single targets
@@ -50,22 +66,22 @@ pkg :
 	mkdir -p $@
 
 pkg/vid-tag-$(cVer).zip :
-	zip pkg/$@ vid-tag vid-tag.inc bash-com.inc
+	zip $@ vid-tag vid-tag.inc bash-com.inc
 
 pkg/vid-tag-test-$(cVer).zip :
-	zip pkg/$@ vid-tag.test bash-com.test shunit2.1
+	zip $@ vid-tag.test bash-com.test shunit2.1
 
 pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
-	zip pkg/$@ $^
+	zip $@ $^
 
 MVI_0107.MP4 :
 	@echo "You must have a user on moria"
-	rsync moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
+	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0110.MP4 :
 	@echo "You must have a user on moria"
-	rsync moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
+	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0746.MP4 :
 	@echo "You must have a user on moria"
-	rsync moria:/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@
+	rsync -aP moria:/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@

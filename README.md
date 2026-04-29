@@ -27,19 +27,24 @@ Keywords metadata using **exiftool**.  The file's **Create Date** metadata
 is read and used to date-stamp the output file name, the output title,
 and the file-system mtime.
 
-Files named on the command line are hard-linked to the ./output/
-directory.  All renaming and metadata updates happen on the linked
-file in ./output/.
+Files are copied to the ./output/ directory, so original files are
+not touched.
+
+Files (in ./output/) will be renamed using fFilePattern and exif
+values will be added. After that large files, greater than 10 min,
+will be split into multiple 10 min parts. Some hosting sites do not
+allow "large" files.
 
 Defaults are read in this order (each layer overrides the previous):
 
-- 1. Built-in script defaults.
-- 2. Local config: **./vid-tag.conf** If the file does not exist it
-will be created, and updated with the latest settings.
-- 3. Command-line options will override all other settings.
+- Built-in script defaults.
+- Local config: **./vid-tag.conf** If the file does not exist it
+will be created, and updated with the latest default settings.
+- Command-line options will override all other settings.
 
-After all the values are set, they are saved to **./vid-tag.conf**
-so the next run needs only the file list.
+After all the values are set, the results are saved to
+**./vid-tag.conf** so the next run needs only needs the -e option and
+the file list.
 
 # OPTIONS
 
@@ -119,9 +124,6 @@ so the next run needs only the file list.
         man         - man page
         html        - HTML page
         md          - Markdown
-        int         - also output internal documentation as text
-        int-html    - also output internal documentation as html
-        int-md      - also output internal documentation as markdown
 
 - **-v**
 
@@ -130,6 +132,10 @@ so the next run needs only the file list.
         (default) - warning and above
         -v        - notice and above
         -vv       - info and above
+
+- **-V**
+
+    Output the script's version.
 
 - **-d**
 
@@ -198,16 +204,16 @@ These are internal variables.
 
 Fatal:
 
-    No input files given.
-    exiftool is not installed or not on PATH.
-    File not found: <filename>
+    + No input files given.
+    + exiftool is not installed or not on PATH.
+    + File not found: <filename>
 
 Warnings (processing continues):
 
-    No CreateDate in <file>; using file mtime.
-    output/<file> already exists, skipping link.
-    target exists, skipping: <old> -> <new>
-    exiftool returned non-zero on <file>
+    + No CreateDate in <file>; using file mtime.
+    + output/<file> already exists, skipping link.
+    + target exists, skipping: <old> -> <new>
+    + exiftool returned non-zero on <file>
 
 # ENVIRONMENT
 
@@ -215,20 +221,23 @@ HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
 
 # FILES
 
-    ./vid-tag.conf - config file
+    ./vid-tag.conf - config file describing tags for an event
     ./output/      - generated directory, with renamed copies of files
 
     ./vid-tag      - this script
     ./vid-tag.inc  - vid-tag functions
     ./bash-com.inc - utility functions
     
-    ./vid-tag.test - optional unit and integration tests
+    ./vid-tag.test - optional unit and CLI integration tests
+    ./vid-tag-test-input.zip - only needed for testCli* tests
     ./shunit2.1    - unit test framework for vid-tag.test
     
 
 # SEE ALSO
 
-bash, exiftool, git config, ffmpeg, sed, bc
+Required: bash, exiftool, git config, ffmpeg, sed, bc
+
+Optional: vid-tag.test
 
 # NOTES
 

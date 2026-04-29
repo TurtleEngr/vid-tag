@@ -15,7 +15,7 @@
 
 set -u
 
-export cVer=1.0
+export cVer=1.1
 export cOutputDir
 
 declare -lx gpEventId

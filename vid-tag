@@ -15,9 +15,10 @@
 
 set -u
 
-declare -lx gpEventId
+export cVer=1.1
 export cOutputDir
 
+declare -lx gpEventId
 export gFile
 export gFileDate
 export gFileDateFull
@@ -85,16 +86,13 @@ source $cBin/vid-tag.inc
 # -------------------
 # Configuration Section
 
-# shellcheck disable=SC2016
-cVer='$Revision: 1.12 $'
-
 fSetGlobals
 
 # -------------------
 # Get Args Section
 
 if [[ $# -eq 0 ]]; then
-    fError -m "Missing required options." -l $LINENO
+    fUsage usage
 fi
 
 # Pre-scan: extract -e so that fLoadConf uses the right event tag

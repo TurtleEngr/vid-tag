@@ -1,8 +1,9 @@
 set -u
 
-declare -lx gpEventId
+export cVer=1.1
 export cOutputDir
 
+declare -lx gpEventId
 export gFile
 export gFileDate
 export gFileDateFull
@@ -311,7 +312,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-$Revision: 1.16 $
+cVer=1.1
 
 =cut
 
@@ -524,13 +525,22 @@ fPreScanOpts() {
 
     local OPTIND=1
     local OPTARG
-
+    
     while (( $# > 0 )); do
         case "$1" in
             -e)
                 gpEventId="${2// /_}"
                 return 0
                 ;;
+            -h)
+                fUsage long
+                return 0
+                ;;
+            -H)
+                fUsage $2
+                return 0
+                ;;
+            -V) return 0 ;;
             -*)
                 # Unknown flag: skip it and its argument (if present)
                 shift
@@ -576,7 +586,7 @@ fGetOpt() {
     local OPTARG
     local tArg
 
-    while getopts :c:C:e:E:f:k:np:P:R:t:x:hH:vd tArg; do
+    while getopts :c:C:e:E:f:k:np:P:R:t:x:hH:vVd tArg; do
         case $tArg in
             # Script arguments
             c) gpEventCity="$OPTARG" ;;
@@ -595,6 +605,9 @@ fGetOpt() {
             h) fUsage long ;;
             H) fUsage "$OPTARG" ;;
             v) ((++gpVerbose)) ;;
+            V) echo "vid-tag version: $cVer"
+               exit 0
+               ;;
             d) ((++gpDebug)) ;;
             # Problem arguments
             :)  fError -m "Value required for option: -$OPTARG" -l $LINENO ;;

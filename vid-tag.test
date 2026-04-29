@@ -3,6 +3,8 @@
 # $Revision: 1.10 $ $Date: 2026/04/29 18:27:22 $ GMT
 set -u
 
+export cVer=1.1
+
 # --------------------------------
 fUsageTest() {
     # Quick help, run this:
@@ -1561,7 +1563,6 @@ source $cBin/vid-tag.inc
 # Configuration Section
 
 # shellcheck disable=SC2016
-cVer='$Revision: 1.10 $'
 fSetTestGlobals
 
 # -------------------
@@ -1572,7 +1573,7 @@ if [[ $# -eq 0 ]]; then
     fUsageTest
 fi
 
-while getopts :T:hH:lvd tArg; do
+while getopts :T:hH:lvVd tArg; do
     case $tArg in
         # Script arguments
         T) gpTest="$OPTARG" ;;
@@ -1581,6 +1582,9 @@ while getopts :T:hH:lvd tArg; do
         H) fUsageTest "$OPTARG"; exit 1 ;;
         l) gpLog=1 ;;
         v) ((++gpVerbose)) ;;
+        V) echo "vid-tag.test version: $cVer"
+           exit 0
+           ;;
         d) ((++gpDebug)) ;;
         # Problem arguments
         :)  fLog -p err -m "Value required for option: -$OPTARG" -l $LINENO

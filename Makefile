@@ -37,14 +37,19 @@ package : build pkg pkg/vid-tag-$(cVer).zip
 package-test : package pkg/vid-tag-test-input.zip
 
 release : package
-	@echo "You must have a user on moria"
 	git tag -f v$(cVer)
+	git push --tags origin develop
+	gi co main
+	git merge develop
+	git push origin main
+	git co develop
+	@read -p "You must have a user on moria. ^c to quit"
 	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
 	rsync -aP pkg/vid-tag-$(cVer).zip moria:/rel/released/software/own/vid-tag/
 
 release-test : release package-test
-	@echo "You must have a user on moria"
 	git tag -f v$(cVer)
+	@read -p "You must have a user on moria. ^c to quit"
 	rsync -aP pkg/vid-tag-test-input.zip moria:/rel/released/software/own/vid-tag/
 
 # --------------------
@@ -75,13 +80,13 @@ pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	zip $@ $^
 
 MVI_0107.MP4 :
-	@echo "You must have a user on moria"
+	@read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0110.MP4 :
-	@echo "You must have a user on moria"
+	@read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0746.MP4 :
-	@echo "You must have a user on moria"
+	@read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@

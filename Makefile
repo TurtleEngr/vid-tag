@@ -2,6 +2,7 @@
 
 # --------------------
 # Macros
+SHELL = /bin/bash
 cVer = 1.1
 
 # --------------------
@@ -34,6 +35,7 @@ build : README.md
 	for i in vid-tag vid-tag.inc vid-tag.test; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
+	-git ci -am Updated
 
 test :
 	./vid-tag.test -T fast
@@ -45,26 +47,23 @@ test-all :
 	./vid-tag.test -T all
 
 package : build pkg pkg/vid-tag-$(cVer).zip
-	-git ci -am "Before package"
 
 package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
 
 release : package
-	-git ci -am "Before release"
 	git tag -f v$(cVer)
 	git push --tags origin develop
 	git co main
 	git merge develop
 	git push origin main
 	git co develop
-	@read -p "You must have a user on moria. ^c to quit"
+	read -p "You must have a user on moria. ^c to quit"
 	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
 	rsync -aP pkg/vid-tag-$(cVer).zip \
 		moria:/rel/released/software/own/vid-tag/
 
-release-test : release package-test
-	git tag -f v$(cVer)
-	@read -p "You must have a user on moria. ^c to quit"
+release-test : package-test
+	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP pkg/vid-tag-test-$(cVer).zip \
 		pkg/vid-tag-test-input.zip \
 		moria:/rel/released/software/own/vid-tag/
@@ -101,13 +100,13 @@ pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	zip $@ $^
 
 MVI_0107.MP4 :
-	@read -p "You must have a user on moria. ^c to quit"
+	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0110.MP4 :
-	@read -p "You must have a user on moria. ^c to quit"
+	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0746.MP4 :
-	@read -p "You must have a user on moria. ^c to quit"
+	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@

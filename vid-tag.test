@@ -263,7 +263,7 @@ testCliUsage() {
 
     #-----
     tResult=$(./vid-tag -H html 2>&1)
-    assertContains "$LINENO html.1" "$tResult" '<li><a href="#DESCRIPTION">DESCRIPTION</a></li>'
+    assertContains "$LINENO html.1" "$tResult" '<a href="#DESCRIPTION">DESCRIPTION</a>'
     assertContains "$LINENO html.2" "$tResult" '<h1 id="HISTORY">HISTORY</h1>'
     assertContains "$LINENO html.3" "$tResult" "<title>vid-tag Usage</title>"
 

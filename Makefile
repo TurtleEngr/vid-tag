@@ -13,6 +13,8 @@ usage:
 	@echo 'dist-clean - remove all built files'
 	@echo 'update     - check for newer dependent files'
 	@echo 'build      - Update README and update cVer in files'
+	@echo 'test	  - Quick tests (about 7sec)'
+	@echo 'test-all   - Test with video files; slow (about 16min)'
 	@echo 'package    - create the package zip file'
 	@echo 'release    - copy package to release server'
 	@echo 'package-test - create the test package zip file'
@@ -44,7 +46,7 @@ test-all :
 
 package : build pkg pkg/vid-tag-$(cVer).zip
 
-package-test : package pkg/vid-tag-test-input.zip
+package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
 
 release : package
 	git tag -f v$(cVer)
@@ -55,12 +57,15 @@ release : package
 	git co develop
 	@read -p "You must have a user on moria. ^c to quit"
 	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
-	rsync -aP pkg/vid-tag-$(cVer).zip moria:/rel/released/software/own/vid-tag/
+	rsync -aP pkg/vid-tag-$(cVer).zip \
+		moria:/rel/released/software/own/vid-tag/
 
 release-test : release package-test
 	git tag -f v$(cVer)
 	@read -p "You must have a user on moria. ^c to quit"
-	rsync -aP pkg/vid-tag-test-input.zip moria:/rel/released/software/own/vid-tag/
+	rsync -aP pkg/vid-tag-test-$(cVer).zip \
+		pkg/vid-tag-test-input.zip \
+		moria:/rel/released/software/own/vid-tag/
 
 # --------------------
 # Single targets
@@ -85,7 +90,7 @@ pkg :
 	mkdir -p $@
 
 pkg/vid-tag-$(cVer).zip :
-	zip $@ vid-tag vid-tag.inc bash-com.inc
+	zip $@ vid-tag vid-tag.inc bash-com.inc LICENSE
 
 pkg/vid-tag-test-$(cVer).zip :
 	zip $@ vid-tag.test bash-com.test shunit2.1

@@ -297,6 +297,8 @@ Warnings (processing continues):
     + target exists, skipping: <old> -> <new>
     + exiftool returned non-zero on <file>
 
+=for comment =head1 EXAMPLES
+
 =head1 ENVIRONMENT
 
 HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
@@ -323,13 +325,40 @@ Optional: vid-tag.test
 
 =head1 NOTES
 
+All of this code is maintained at:
+https://github.com/TurtleEngr/vid-tag The releases are are marked with
+vN.N tags.
+
+The latest packaged zip file, vid-tag-VER.zip, can be found at:
+https://moria.whyayh.com/rel/released/software/own/vid-tag/
+
+=for comment =head1 CAVEATS
+
+=head1 DIAGNOSTICS
+
+This tool comes with a test script to verify vid-tag script is working
+OK.  Download these files:
+
+    vid-tag-test-VER.zip
+    vid-tag-test-input.zip
+
+from: https://moria.whyayh.com/rel/released/software/own/vid-tag/
+
+After unzipping the files run ./vid-tag.test to get usage help.
+
+=head1 BUGS
+
+Report bugs at: https://github.com/TurtleEngr/vid-tag/issues
+
+=for comment =head1 RESTRICTIONS
+
 =head1 AUTHOR
 
 Turtle Engineer
 
 =head1 HISTORY
 
-GPLv2 (c) Copyright
+GPLv2 (c) Copyright (See LICENSE file for terms.)
 
 cVer=1.1
 

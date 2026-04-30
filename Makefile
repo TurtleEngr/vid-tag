@@ -51,8 +51,10 @@ test-all :
 	./vid-tag.test -T all
 
 package : build pkg pkg/vid-tag-$(cVer).zip
+	-git push --tags origin develop
 
 package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
+	-git push --tags origin develop
 
 release : package
 	git tag -f v$(cVer)

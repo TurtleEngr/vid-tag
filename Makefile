@@ -1,6 +1,10 @@
 # Makefile for vid-tag app
 
 # --------------------
+# Remove a dup tag on remote
+# git push origin --delete vN.N
+
+# --------------------
 # Macros
 SHELL = /bin/bash
 cVer = 1.1

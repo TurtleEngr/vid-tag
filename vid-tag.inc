@@ -1,6 +1,7 @@
 set -u
 
 export cVer=1.1
+export cExampleFile
 export cOutputDir
 
 declare -lx gpEventId
@@ -374,6 +375,8 @@ fSetGlobals() {
     # -------------------
     # Output directory constant
     cOutputDir="output"
+    
+    cExampleFile="vid-tag-example.txt"
 
     # -------------------
     # Script-level runtime flags
@@ -405,7 +408,7 @@ fSetGlobals() {
     gFileDateTouch=""
 
     # -------------------
-    # fExample collection state
+    # fExample collection state variables
     gpCmdLine=${gpCmdLine:-""}
     gExampleOrigNames=()
     gExampleNewNames=()
@@ -884,6 +887,103 @@ EOF
 } # fExampleCollect
 
 # --------------------------------
+fExampleCollectSplit() {
+    # If pFile's duration is greater than 10 min, append one record per
+    # 10-min segment that fProcessFile would produce.  Each part inherits
+    # the parent's Title and tags; only the CreateDate is shifted by
+    # (partIdx * 10) minutes.  Names mirror what ffmpeg's segment muxer
+    # writes in fProcessFile: "<root>-NN.mp4" (lowercase ".mp4").
+    #
+    # $1 = original basename                 (e.g. MVI_0746.MP4)
+    # $2 = path to the input file            (used by ffmpeg -i)
+    # $3 = parent's CreateDate, exiftool fmt "YYYY:MM:DD HH:MM:SS"
+    local pBase="$1"
+    local pFile="$2"
+    local pCreateDate="$3"
+
+    local -i tH
+    local -i tM
+    local -i tS
+    local -i tMin
+    local -i tNumParts
+    local -i tIdx
+    local -i tIncMin
+    local tLength
+    local tNewName
+    local tNewTitle
+    local tPartName
+    local tPartTime
+
+    # Read duration with the same ffmpeg call style fProcessFile uses.
+    tLength=$(ffmpeg -i "$pFile" 2>&1 | grep -oP 'Duration: \K[\d:]+(?=\.)')
+    if [[ -z "$tLength" ]]; then
+        return 0
+    fi
+    IFS=':' read -r tH tM tS <<< "$tLength"
+    IFS=' '
+
+    # Strip any leading zeros so bash arithmetic doesn't treat them as octal.
+    tH=$((10#$tH))
+    tM=$((10#$tM))
+    tS=$((10#$tS))
+
+    # Same threshold as fProcessFile: <= 10 min → no split.
+    ((tMin = tH * 60 + tM))
+    if [[ $tMin -le 10 ]]; then
+        return 0
+    fi
+
+    # ceil(total_seconds / 600) - matches the segment count ffmpeg's
+    # -segment_time 00:10:00 muxer will emit.
+    tNumParts=$(( (tMin * 60 + tS + 599) / 600 ))
+
+    # Parts share the renamed root with a -NN suffix and lowercase ".mp4"
+    tNewName=$(fApplyPattern "$gpFilePat" "$pBase")
+    tNewName="${tNewName%.*}"
+
+    # Parts inherit Title from the parent (TagsFromFile in fProcessFile),
+    # so re-apply the title pattern with the same gFileDate* globals that
+    # the parent fExampleCollect call used.
+    tNewTitle=$(fApplyPattern "$gpTitlePat" "$pBase")
+    if [[ -n "$gpEventExtra" ]]; then
+        tNewTitle="$tNewTitle $gpEventExtra."
+    fi
+
+    for (( tIdx=0; tIdx < tNumParts; tIdx++ )); do
+        tPartName=$(printf "%s-%02d.mp4" "$tNewName" "$tIdx")
+        ((tIncMin = tIdx * 10))
+        tPartTime=$(fAddMin "$pCreateDate" $tIncMin)
+
+        gExampleOrigNames[$gExampleIdx]="$pBase"
+        gExampleNewNames[$gExampleIdx]="$tPartName"
+        gExampleTitles[$gExampleIdx]="$tNewTitle"
+        gExampleCreateDates[$gExampleIdx]="$tPartTime"
+        ((++gExampleIdx))
+    done
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fExampleCollectSplit pBase pFile pCreateDate
+
+If pFile is longer than 10 minutes, append one gExample* record per
+10-min segment that fProcessFile would create.  Part names use the
+"<root>-NN.mp4" convention with lowercase ".mp4" to match ffmpeg's
+segment muxer output.  CreateDate is shifted by (partIdx * 10) minutes
+via fAddMin; all other tag values are inherited from the parent, so
+the example file shows the same Title/Author/Keywords/etc. that
+fProcessFile copies via "exiftool -TagsFromFile".
+
+Returns 0 with no entries appended if ffmpeg returns no Duration line
+or the file is 10 minutes or shorter.
+
+=internal-cut
+EOF
+} # fExampleCollectSplit
+
+# --------------------------------
 fExample() {
     # Build vid-tag-example.txt showing what the next non-dry-run pass
     # would do: rename mappings into ./output/ and the exif tags that
@@ -895,7 +995,6 @@ fExample() {
     # set to "now".  Otherwise we walk gpEventFileList and read each
     # file's CreateDate via fReadFileDate.
 
-    local cExampleFile="vid-tag-example.txt"
     local tBase
     local tCmd
     local tFile
@@ -920,6 +1019,9 @@ fExample() {
             tBase=$(basename "$tFile")
             fReadFileDate "$tFile"
             fExampleCollect "$tBase" "$gFileDate"
+            # Files longer than 10 min will be split by fProcessFile;
+            # mirror that here so vid-tag-example.txt previews the parts.
+            fExampleCollectSplit "$tBase" "$tFile" "$gFileDate"
         done
     fi
 

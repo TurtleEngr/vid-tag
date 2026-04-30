@@ -220,6 +220,7 @@ setUp() {
 
     # Output dir constant (set by fSetGlobals normally)
     cOutputDir="output"
+    cExampleFile="vid-tag-example.txt"
     gpConfLocal="./vid-tag.conf"
     return 0
 } # setUp
@@ -1592,6 +1593,165 @@ testExample_RealFiles() {
     rm -f "$tFile"
     return 0
 } # testExample_RealFiles
+
+# --------------------------------
+testExampleCollectSplit_Short() {
+    # A file under 10 min must NOT produce any split entries.  Use
+    # MVI_0107.MP4 (1:36 long) and confirm gExampleIdx stays 0.
+    if [[ ! -f MVI_0107.MP4 ]]; then
+        startSkipping
+    fi
+
+    gpEventId="testevent"
+    gpNameShort="BAR"
+    gpNameLong="Bruce Rafnel"
+    gpEventCity="Redwood City"
+    gpEventTitle="This is a test title"
+    gpEventExtra=""
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%D, %c, %E, by %P.'
+
+    gExampleOrigNames=()
+    gExampleNewNames=()
+    gExampleTitles=()
+    gExampleCreateDates=()
+    gExampleIdx=0
+
+    fReadFileDate "MVI_0107.MP4"
+    fExampleCollectSplit "MVI_0107.MP4" "MVI_0107.MP4" "$gFileDate"
+
+    assertEquals "$LINENO no split entries" "0" "$gExampleIdx"
+    return 0
+} # testExampleCollectSplit_Short
+
+# --------------------------------
+testExampleCollectSplit_Long() {
+    # MVI_0746.MP4 is 23:45; fProcessFile would split it into three
+    # 10-min parts.  fExampleCollectSplit must mirror that, appending
+    # three records with -00/-01/-02 names and CreateDates shifted by
+    # 0, 10, and 20 minutes from the parent.
+    if [[ ! -f MVI_0746.MP4 ]]; then
+        startSkipping
+    fi
+
+    gpEventId="testevent"
+    gpNameShort="BAR"
+    gpNameLong="Bruce Rafnel"
+    gpEventCity="Redwood City"
+    gpEventTitle="This is a test title"
+    gpEventExtra=""
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%D, %c, %E, by %P.'
+
+    gExampleOrigNames=()
+    gExampleNewNames=()
+    gExampleTitles=()
+    gExampleCreateDates=()
+    gExampleIdx=0
+
+    fReadFileDate "MVI_0746.MP4"
+    fExampleCollectSplit "MVI_0746.MP4" "MVI_0746.MP4" "$gFileDate"
+
+    # ----- Three split parts collected -----
+    assertEquals "$LINENO 3 split entries" "3" "$gExampleIdx"
+
+    # ----- Each part shares the parent's basename as origin -----
+    assertEquals "$LINENO 00 orig" "MVI_0746.MP4" "${gExampleOrigNames[0]}"
+    assertEquals "$LINENO 01 orig" "MVI_0746.MP4" "${gExampleOrigNames[1]}"
+    assertEquals "$LINENO 02 orig" "MVI_0746.MP4" "${gExampleOrigNames[2]}"
+
+    # ----- Part filenames use "-NN.mp4" (lowercase) -----
+    assertEquals "$LINENO 00 name" \
+        "2026-03-01_testevent_BAR_MVI_0746-00.mp4" "${gExampleNewNames[0]}"
+    assertEquals "$LINENO 01 name" \
+        "2026-03-01_testevent_BAR_MVI_0746-01.mp4" "${gExampleNewNames[1]}"
+    assertEquals "$LINENO 02 name" \
+        "2026-03-01_testevent_BAR_MVI_0746-02.mp4" "${gExampleNewNames[2]}"
+
+    # ----- CreateDate shifted by 0/10/20 min from 19:57:49 -----
+    assertEquals "$LINENO 00 cdate" \
+        "2026:03:01 19:57:49" "${gExampleCreateDates[0]}"
+    assertEquals "$LINENO 01 cdate" \
+        "2026:03:01 20:07:49" "${gExampleCreateDates[1]}"
+    assertEquals "$LINENO 02 cdate" \
+        "2026:03:01 20:17:49" "${gExampleCreateDates[2]}"
+
+    # ----- Title is inherited (same for all parts) -----
+    assertEquals "$LINENO 00 title" \
+        "${gExampleTitles[0]}" "${gExampleTitles[1]}"
+    assertEquals "$LINENO 01 title" \
+        "${gExampleTitles[1]}" "${gExampleTitles[2]}"
+    return 0
+} # testExampleCollectSplit_Long
+
+# --------------------------------
+testExample_RealFilesWithSplit() {
+    # End-to-end: fExample on MVI_0746.MP4 must write vid-tag-example.txt
+    # showing the parent rename plus one entry per split part with the
+    # right CreateDate offsets.
+    local tFile="vid-tag-example.txt"
+    local tContent
+
+    if [[ ! -f MVI_0746.MP4 ]]; then
+        startSkipping
+    fi
+
+    rm -f "$tFile"
+
+    gpNoExec=0
+    gpEventId="testevent"
+    gpCaption="Test Caption Body"
+    gpCopyright="Copyright Bruce Rafnel 2026"
+    gpNameLong="Bruce Rafnel"
+    gpNameShort="BAR"
+    gpEventCity="Redwood City"
+    gpEventTitle="This is a test title"
+    gpEventKeyword="PBP,Protest"
+    gpEventExtra=""
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%D, %c, %E, by %P.'
+    gpEventFileList="MVI_0746.MP4"
+    gpCmdLine="vid-tag -e testevent MVI_0746.MP4"
+
+    fExample
+
+    assertTrue "$LINENO file created" "[ -f $tFile ]"
+    tContent=$(cat "$tFile")
+
+    # ----- Files: parent rename plus one per split part -----
+    assertContains "$LINENO 0746 rename" "$tContent" \
+        "MVI_0746.MP4 -> output/2026-03-01_testevent_BAR_MVI_0746.MP4"
+    assertContains "$LINENO 0746 part 00" "$tContent" \
+        "MVI_0746.MP4 -> output/2026-03-01_testevent_BAR_MVI_0746-00.mp4"
+    assertContains "$LINENO 0746 part 01" "$tContent" \
+        "MVI_0746.MP4 -> output/2026-03-01_testevent_BAR_MVI_0746-01.mp4"
+    assertContains "$LINENO 0746 part 02" "$tContent" \
+        "MVI_0746.MP4 -> output/2026-03-01_testevent_BAR_MVI_0746-02.mp4"
+
+    # ----- Exif Changes block per part with shifted CreateDate -----
+    assertContains "$LINENO part 00 hdr"   "$tContent" \
+        "2026-03-01_testevent_BAR_MVI_0746-00.mp4"
+    assertContains "$LINENO part 00 cdate" "$tContent" \
+        "Create Date = 2026:03:01 19:57:49"
+
+    assertContains "$LINENO part 01 hdr"   "$tContent" \
+        "2026-03-01_testevent_BAR_MVI_0746-01.mp4"
+    assertContains "$LINENO part 01 cdate" "$tContent" \
+        "Create Date = 2026:03:01 20:07:49"
+
+    assertContains "$LINENO part 02 hdr"   "$tContent" \
+        "2026-03-01_testevent_BAR_MVI_0746-02.mp4"
+    assertContains "$LINENO part 02 cdate" "$tContent" \
+        "Create Date = 2026:03:01 20:17:49"
+
+    # ----- 1 parent + 3 split parts = 4 mapping lines, idx=4 -----
+    assertEquals "$LINENO 4 entries" "4" \
+        "$(grep -c '\->\ output/' "$tFile")"
+    assertEquals "$LINENO idx" "4" "$gExampleIdx"
+
+    rm -f "$tFile"
+    return 0
+} # testExample_RealFilesWithSplit
 
 # -------------------
 # This should be the last defined function

@@ -53,7 +53,7 @@ release : package
 	-git ci -am "Before release"
 	git tag -f v$(cVer)
 	git push --tags origin develop
-	gi co main
+	git co main
 	git merge develop
 	git push origin main
 	git co develop

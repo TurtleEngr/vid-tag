@@ -33,6 +33,15 @@ build : README.md
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
 
+test :
+	./vid-tag.test -T fast
+	./vid-tag -n -e testevent MVI_0107.MP4  MVI_0110.MP4  MVI_0746.MP4
+	@echo "Review: vid-tag.conf"
+	@echo "Review: vid-tag-example.txt"
+
+test-all :
+	./vid-tag.test -T all
+
 package : build pkg pkg/vid-tag-$(cVer).zip
 
 package-test : package pkg/vid-tag-test-input.zip

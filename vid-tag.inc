@@ -1015,7 +1015,7 @@ fExample() {
     gExampleIdx=0
 
     # ---- Collection phase ----
-    if [[ $gpNoExec -ne 0 ]]; then
+    if [[ $gpNoExec -ne 0 && "$gpEventFileList" = "" ]]; then
         # Dummy entry: FILE.mp4 with the current local date/time
         gFileDate=$('date' +"%Y:%m:%d %H:%M:%S")
         fConvertDate "$gFileDate"

@@ -1,3 +1,5 @@
 pkg/
 *.mp4
 *.MP4
+README.html
+pod2htmd.tmp

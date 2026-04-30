@@ -318,25 +318,6 @@ The value of C<$gpEventId> is the primary key.
 
 extra - is optional, but if defined, it must end with a '.'
 
-=head2 CONFIG KEY TO VARIABLE MAP
-
-These are internal variables.
-
-    Config key        Variable
-    ---------         --------
-    com.caption       gpCaption
-    com.copyright     gpCopyright
-    com.file-pat      gpFilePat
-    com.name-long     gpNameLong
-    com.name-short    gpNameShort
-    com.title-pat     gpTitlePat
-    event.tag         gpEventId
-    event.city        gpEventCity
-    event.extra       gpEventExtra
-    event.file-list   gpEventFileList
-    event.keyword     gpEventKeyword
-    event.title       gpEventTitle
-
 =head1 RETURN VALUE
 
 0 on success; non-zero on error.
@@ -472,6 +453,25 @@ EOF
 =internal-head3 fUsage pStyle
 
 Select the type of help output. See -h and -H options.
+
+=internal-head2 CONFIG KEY TO VARIABLE MAP
+
+These are internal variables.
+
+    Config key        Variable
+    ---------         --------
+    com.caption       gpCaption
+    com.copyright     gpCopyright
+    com.file-pat      gpFilePat
+    com.name-long     gpNameLong
+    com.name-short    gpNameShort
+    com.title-pat     gpTitlePat
+    event.tag         gpEventId
+    event.city        gpEventCity
+    event.extra       gpEventExtra
+    event.file-list   gpEventFileList
+    event.keyword     gpEventKeyword
+    event.title       gpEventTitle
 
 =internal-cut
 

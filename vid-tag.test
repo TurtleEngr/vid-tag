@@ -1834,13 +1834,13 @@ cCurDir=$PWD
 # -------------------
 # Locate the directory that contains this script (and bash-com.inc).
 #tBin=home
-tBin=current
+tBin=this
 case $tBin in
+    this)    cBin=${BASH_SOURCE%/*} ;;
     current) cBin=$PWD ;;
     home)    cBin=~/bin ;;
     local)   cBin=/usr/local/bin ;;
     system)  cBin=/usr/bin ;;
-    this)    cBin=${BASH_SOURCE%/*} ;;
 esac
 
 if [[ ! -x $cBin/bash-com.inc ]]; then

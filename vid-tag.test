@@ -3,7 +3,7 @@
 # $Revision: 1.10 $ $Date: 2026/04/29 18:27:22 $ GMT
 set -u
 
-export cVer=1.1
+export cVer=1.2
 
 # --------------------------------
 fUsageTest() {
@@ -113,7 +113,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-cVer=1.1
+cVer=1.2
 
 =cut
 EOF

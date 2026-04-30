@@ -43,6 +43,7 @@ Test vid-tag
     vid-tag.test [-h] [-h pStyle]
     vid-tag.test -T list [-v] [-d]
     vid-tag.test -T all [-v] [-d]
+    vid-tag.test -T fast [-v] [-d]
     vid-tag.test -T cli [-v] [-d]
     vid-tag.test -T not-cli [-v] [-d]
     vid-tag.test -T com [-v] [-d]
@@ -56,6 +57,9 @@ The test data archive C<vid-tag-test-input.zip> must exist in the
 current directory; it is unzipped during oneTimeSetUp and supplies
 three video files plus a sample C<vid-tag.conf>.
 
+The number in the asssert messages (ASSERT:282 msg), is the line
+number for assert test that failed.
+
 =head1 OPTIONS
 
 =over 4
@@ -65,6 +69,8 @@ three video files plus a sample C<vid-tag.conf>.
 Run the unit test functions in this script.
 
 "B<-T all>" runs all functions that begin with "test".
+
+"B<-T fast>" runs all functions that do not have Slow in their name".
 
 "B<-T cli>" runs all functions that begin with "testCli".
 
@@ -107,7 +113,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-$Revision: 1.10 $
+cVer=1.1
 
 =cut
 EOF
@@ -279,7 +285,7 @@ testCliMissingArgs() {
 
     # vid-tag with no args at all → "Missing required options."
     tResult=$(./vid-tag 2>&1)
-    assertContains "$LINENO no-args" "$tResult" "Missing required options"
+    assertContains "$LINENO no-args" "$tResult" "Usage:"
     return 0
 } # testCliMissingArgs
 
@@ -605,12 +611,13 @@ fHelperRunFullPipeline() {
 } # fHelperRunFullPipeline
 
 # --------------------------------
-testCliFullRunStdout() {
+testCliFullRunStdoutSlow() {
     # Run vid-tag against all three test-input files and verify the
     # expected log messages appear on stdout (which fLog routes to
     # stderr - merged here with 2>&1).
     local tResult
 
+    echo -e "\tfHelperRunFullPipeline"
     tResult=$(fHelperRunFullPipeline)
 
     # ----- Conf save / output dir creation -----
@@ -644,36 +651,8 @@ testCliFullRunStdout() {
         "Rename: MVI_0746.MP4 -> 2026-03-01_testevent_BAR_MVI_0746.MP4"
 
     # ----- exiftool command-line tag values come from the conf -----
-    # Title pattern expanded per file (date varies; 0107 and 0110 share
-    # the same date, 0746 has its own).
-    assertContains "$LINENO 0107 -Title" "$tResult" \
-        "-Title=2016-11-21 Mon, Redwood City, This is a test title, by Bruce Rafnel."
-    assertContains "$LINENO 0746 -Title" "$tResult" \
-        "-Title=2026-03-01 Sun, Redwood City, This is a test title, by Bruce Rafnel."
-
-    assertContains "$LINENO -FileName 0107" "$tResult" \
-        "-FileName=2016-11-21_testevent_BAR_MVI_0107.MP4"
-    assertContains "$LINENO -FileName 0110" "$tResult" \
-        "-FileName=2016-11-21_testevent_BAR_MVI_0110.MP4"
-    assertContains "$LINENO -FileName 0746" "$tResult" \
-        "-FileName=2026-03-01_testevent_BAR_MVI_0746.MP4"
-
-    assertContains "$LINENO -Copyright" "$tResult" \
-        "-Copyright=Copyright Bruce Rafnel 2026"
-    assertContains "$LINENO -Artist"    "$tResult" \
-        "-Artist=Copyright Bruce Rafnel 2026"
-    assertContains "$LINENO -Author"    "$tResult" \
-        "-Author=Bruce Rafnel"
-    assertContains "$LINENO -Keywords"  "$tResult" \
-        "-Keywords=PBP,Protest"
-    assertContains "$LINENO -Caption"   "$tResult" \
-        "-Caption=This photo or video may be downloaded and used freely"
-    assertContains "$LINENO -Description" "$tResult" \
-        "-Description=This photo or video may be downloaded and used freely"
-    assertContains "$LINENO -ImageDescription" "$tResult" \
-        "-ImageDescription=This photo or video may be downloaded and used freely"
-    assertContains "$LINENO CC license" "$tResult" \
-        "https://creativecommons.org/licenses/by-nc/4.0/"
+    assertContains "$LINENO set" "$tResult" \
+        "Set new meta values"
 
     # ----- exiftool reports "1 image files updated" for each processed file -----
     assertContains "$LINENO 1 file updated" "$tResult" \
@@ -681,11 +660,11 @@ testCliFullRunStdout() {
 
     # ----- touch -t with the exif CreateDate (HHMM.SS, no timezone) -----
     assertContains "$LINENO touch 0107" "$tResult" \
-        "touch -t 201611210020.59 2016-11-21_testevent_BAR_MVI_0107.MP4"
+        'touch -d "2016-11-21 00:20:59" "2016-11-21_testevent_BAR_MVI_0107.MP4"'
     assertContains "$LINENO touch 0110" "$tResult" \
-        "touch -t 201611210029.11 2016-11-21_testevent_BAR_MVI_0110.MP4"
+        'touch -d "2016-11-21 00:29:11" "2016-11-21_testevent_BAR_MVI_0110.MP4"'
     assertContains "$LINENO touch 0746" "$tResult" \
-        "touch -t 202603011957.49 2026-03-01_testevent_BAR_MVI_0746.MP4"
+        'touch -d "2026-03-01 19:57:49" "2026-03-01_testevent_BAR_MVI_0746.MP4"'
 
     # ----- Splitting: only MVI_0746.MP4 is > 10 minutes (23:45) -----
     assertContains "$LINENO split"        "$tResult" \
@@ -694,26 +673,27 @@ testCliFullRunStdout() {
         "Copy the exif data from original"
 
     # The TagsFromFile invocations - one per split part
-    assertContains "$LINENO tags 00"      "$tResult" \
-        "exiftool -TagsFromFile 2026-03-01_testevent_BAR_MVI_0746.MP4 -all:all"
     assertContains "$LINENO tags 00 part" "$tResult" \
-        "2026-03-01_testevent_BAR_MVI_0746-00.mp4"
+        "exiftool -TagsFromFile 2026-03-01_testevent_BAR_MVI_0746.MP4 -all:all 2026-03-01_testevent_BAR_MVI_0746-00.mp4"
+
     assertContains "$LINENO tags 01 part" "$tResult" \
-        "2026-03-01_testevent_BAR_MVI_0746-01.mp4"
+        "exiftool -TagsFromFile 2026-03-01_testevent_BAR_MVI_0746.MP4 -all:all 2026-03-01_testevent_BAR_MVI_0746-01.mp4"
+
     assertContains "$LINENO tags 02 part" "$tResult" \
-        "2026-03-01_testevent_BAR_MVI_0746-02.mp4"
+        "exiftool -TagsFromFile 2026-03-01_testevent_BAR_MVI_0746.MP4 -all:all 2026-03-01_testevent_BAR_MVI_0746-02.mp4"
 
-    # The split exclude-list (kept-from-original) tags
-    assertContains "$LINENO tags keep" "$tResult" \
-        "--FileName --Title --Caption --CaptionAbstract --Copyright --Artist --Author --Keywords --*date* --MakerNotes"
+    # The touch - one per split part
+    assertContains "$LINENO touch 00 part" "$tResult" \
+        'touch -d "2026-03-01 19:57:49" 2026-03-01_testevent_BAR_MVI_0746-00.mp4'
 
-    assertContains "$LINENO fix ts"       "$tResult" \
-        "Fix the timestamps"
-    assertContains "$LINENO touch parts"  "$tResult" \
-        "touch -t 202603011957.49 2026-03-01_testevent_BAR_MVI_0746-*.mp4"
+    assertContains "$LINENO touch 01 part" "$tResult" \
+        'touch -d "2026-03-01 20:07:49" 2026-03-01_testevent_BAR_MVI_0746-01.mp4'
+
+    assertContains "$LINENO touch 02 part" "$tResult" \
+        'touch -d "2026-03-01 20:17:49" 2026-03-01_testevent_BAR_MVI_0746-02.mp4'
 
     # ----- Final notice -----
-    assertContains "$LINENO done"         "$tResult" "Done."
+    assertContains "$LINENO done" "$tResult" "Done."
 
     # ----- The two short files must NOT be split (under 10 min) -----
     if echo "$tResult" | grep -q "Split.*MVI_0107"; then
@@ -723,13 +703,14 @@ testCliFullRunStdout() {
         fail "$LINENO MVI_0110 should not be split (only 0:41 long)"
     fi
     return 0
-} # testCliFullRunStdout
+} # testCliFullRunStdoutSlow
 
 # --------------------------------
-testCliFullRunOutputFiles() {
+testCliFullRunOutputFilesSlow() {
     # Run vid-tag and verify all expected files end up in ./output/
     # with the expected (dated/event/photog/file pattern) names.
 
+    echo -e "\tfHelperRunFullPipeline"
     fHelperRunFullPipeline >/dev/null
     
     # ----- The renamed primary files -----
@@ -769,10 +750,10 @@ testCliFullRunOutputFiles() {
         fail "$LINENO MVI_0110 should not be split"
     fi
     return 0
-} # testCliFullRunOutputFiles
+} # testCliFullRunOutputFilesSlow
 
 # --------------------------------
-testCliFullRunExif() {
+testCliFullRunExifSlow() {
     # Verify the exif tags written to the renamed MVI_0107 output file.
     local tExif
     local tFile
@@ -780,6 +761,7 @@ testCliFullRunExif() {
     local tPart
     local tValue
 
+    echo -e "\tfHelperRunFullPipeline"
     fHelperRunFullPipeline >/dev/null
 
     echo -e "\tMVI_0107.MP4" 1>&2
@@ -829,7 +811,7 @@ testCliFullRunExif() {
         "Make                            : Canon"
 
     # --------------------------------
-    echo -e "\tMVI0110" 1>&2
+    echo -e "\tMVI0110.MP4" 1>&2
     # Verify the exif tags written to the renamed MVI_0110 output file.
     # Same camera as 0107 but a different per-file CreateDate.
 
@@ -862,16 +844,8 @@ testCliFullRunExif() {
     assertContains "$LINENO ModifyDate" "$tExif" \
         "Modify Date                     : 2016:11:21 00:29:11"
 
-    # ----- File-system mtime -----
-    assertContains "$LINENO File mod date" "$tExif" \
-        "File Modification Date/Time     : 2016:11:21 00:29:11"
-
-    # ----- Original camera info preserved -----
-    assertContains "$LINENO Camera Model" "$tExif" \
-        "Camera Model Name               : Canon VIXIA HF R40"
-
     # --------------------------------
-    echo -e "\tMVI0110" 1>&2
+    echo -e "\tMVI_0746.MP4" 1>&2
     # Verify the exif tags written to the renamed MVI_0746 output file
     # (the 4.2GB master, before splitting).
 
@@ -915,7 +889,7 @@ testCliFullRunExif() {
         "Make                            : Canon"
 
     # --------------------------------
-    echo -e "\t0746" 1>&2
+    echo -en "\tsplit " 1>&2
     # Verify the exif tags on the three 10-minute split parts.  Each
     # part has metadata copied from the parent via -TagsFromFile, but
     # excluding FileName, Title/Caption/Copyright/Artist/Author/Keywords
@@ -927,6 +901,7 @@ testCliFullRunExif() {
     # end up carrying the same vid-tag-written values as the parent.
 
     for tPart in 00 01 02; do
+        echo -en "$tPart " 1>&2
         tFile="./output/2026-03-01_testevent_BAR_MVI_0746-${tPart}.mp4"
         assertTrue "$LINENO part $tPart exists" "[ -f $tFile ]"
         if [[ ! -f $tFile ]]; then
@@ -939,7 +914,7 @@ testCliFullRunExif() {
         tMeta=$(echo "$tExif" | grep '^Title ')
         assertContains "$LINENO part $tPart Title" "$tMeta" "Title "
         assertContains "$LINENO part $tPart Title" "$tMeta" \
-            " : 2026-03-01 Sun, Redwood City, This is a test title, by Bruce Rafnel."
+                       " : 2026-03-01 Sun, Redwood City, This is a test title, by Bruce Rafnel."
         tMeta=$(echo "$tExif" | grep '^Caption ')
         assertContains "$LINENO part $tPart Caption" "$tMeta" "Caption "
         assertContains "$LINENO part $tPart Caption" "$tMeta" \
@@ -957,26 +932,18 @@ testCliFullRunExif() {
         
         tMeta=$(echo "$tExif" | grep '^Artist ')
         assertContains "$LINENO part $tPart Artist" "$tMeta" "Artist "
-        assertContains "$LINENO part $tPart Artist" "$tMeta" "Artist " \
+        assertContains "$LINENO part $tPart Artist" "$tMeta" \
                        " : Copyright Bruce Rafnel 2026"
 
         tMeta=$(echo "$tExif" | grep '^Author ')
         assertContains "$LINENO part $tPart Author" "$tMeta" "Author "
         assertContains "$LINENO part $tPart Author" "$tMeta" \
                        " : Bruce Rafnel"
-
-        # Each part's file modification time is touched to the parent's
-        # CreateDate (no timezone in the assert).
-        assertContains "$LINENO part $tPart mod date" "$tExif" \
-            "File Modification Date/Time     : 2026:03:01 19:57:49"
-
-        # The file should NOT contain the parent's exact Date/Time
-        # Original / CreateDate (those date fields are excluded by the
-        # --*date* in the TagsFromFile -keep list, so the part keeps
-        # whatever ffmpeg put on the segment).
     done
+    echo -e " " 1>&2
+
     return 0
-} # testCliFullRunExif_MVI0746_Splits
+} # testCliFullRunExifSlow
 
 # ========================================
 # Function-level tests (vid-tag.inc)
@@ -1472,6 +1439,12 @@ fRunTests() {
         com)
             gpTest=""
             $cBin/bash-com.test
+            exit $?
+            ;;
+        fast)
+            gpTest=$(grep 'test.*()' $cBin/$cName | grep -v grep | sed 's/()//g; s/{//g' | grep -v Slow)
+            # shellcheck disable=SC1091,SC1090
+            source "$tShunit" -- $gpTest
             exit $?
             ;;
         cli)

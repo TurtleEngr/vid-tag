@@ -81,7 +81,7 @@ Edit config files, and/or use these options to override config file.
 
     vid-tag -e "pEventId" File1 [File2 ...]
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
-        [-E "pEventName"] [-c "pCity"] [-k "pKeyword"]
+        [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
         [-f "pFilePattern"] [-t "pTitlePattern"] [-x "pExtra"]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
@@ -124,6 +124,66 @@ After all the values are set, the results are saved to
 B<./vid-tag.conf> so the next run needs only needs the -e option and
 the file list.
 
+=head2 QUICK START
+
+=head3 Install
+
+=over 4
+
+=item Download the latest packaged zip file, vid-tag-VER.zip
+
+=item The package can be found at:
+
+    https://moria.whyayh.com/rel/released/software/own/vid-tag/
+
+=item Unpack the zip file to your "bin" dir.
+
+Typical choices:
+
+    /usr/local/bin
+    $HOME/bin
+    /opt/vid-tag
+
+Just make sure the install dir is in your PATH env. var.
+
+=back
+
+=head3 First run of vid-tag
+
+=over 4
+
+=item cd to the directory with your video files. Copy the vid-tag.conf
+file from the install dir. This is optional. If missing a default
+version will be created.
+
+    Run: vid-tag -n -e testevent
+
+=item That will create or update ./vid-tag.conf and vid-tag-example.txt
+files.
+
+=item You can now edit the vid-tag.conf file, or use the command line
+options to update the file. Mainly you want to change "testevent" to a
+short ID that will be put in your renamed video files. See the -e
+option.
+
+=back
+
+=head3 Tips
+
+=over 4
+
+=item See the -f option for how you can change the file naming
+pattern, and the -t option for how you can change the Title pattern.
+
+=item After each run, the vid-tag.conf file is updated with any
+changes, and the vid-tag-example.txt file will summarize how the files
+are modified.
+
+=item Between each run you should remove everything in the outputs/
+directory.  Your orginal files will not be modified.
+
+=back
+
 =head1 OPTIONS
 
 =over 4
@@ -135,6 +195,11 @@ Pattern token: B<%e>.  Config key: C<event.tag>. Required: "pEventId"
 
 The value will be changed to lower-case.
 
+=item B<-E "pEventTitle">
+
+Long event name used in the title.  Pattern token: B<%E>.
+Config key: C<event.title>. Default: "Long event description."
+
 =item B<-c "pCity">
 
 City name.  Pattern token: B<%c>.  Config key: C<event.city>. Default:
@@ -144,25 +209,6 @@ City name.  Pattern token: B<%c>.  Config key: C<event.city>. Default:
 
 Caption / description metadata.  Config key: C<com.caption>. Default:
 "Copyright TERMS"
-
-=item B<-R "pCopyright">
-
-Copyright stamp. Config key: C<com.copyright> Default: "Copyright NAME YYYY"
-
-=item B<-E "pEventName">
-
-Long event name used in the title.  Pattern token: B<%E>.
-Config key: C<event.title>. Default: "Long event description."
-
-=item B<-f "pFilePattern">
-
-Output file-name pattern.  Config key: C<com.file-pat>. Default:
-C<%d_%e_%p_%f>.
-
-=item B<-k "pKeyword">
-
-Comma-separated keyword list.  Config key: C<event.keyword>. Default:
-"PBP, event"
 
 =item B<-p "pInitials">
 
@@ -174,9 +220,23 @@ Config key: C<com.name-short>.
 Photographer's full name.  Pattern token: B<%P>.
 Config key: C<com.name-long>. Default: First Last
 
+=item B<-R "pCopyright">
+
+Copyright stamp. Config key: C<com.copyright> Default: "Copyright NAME YYYY"
+
+=item B<-f "pFilePattern">
+
+Output file-name pattern.  Config key: C<com.file-pat>. Default:
+C<%d_%e_%p_%f>.
+
 =item B<-t "pTitlePattern">
 
 Title pattern. Config key: C<com.title-pat>. Default: C<%D, %c, %E, by %P.>
+
+=item B<-k "pKeyword">
+
+Comma-separated keyword list.  Config key: C<event.keyword>. Default:
+"PBP, event"
 
 =item B<-x "pExtra">
 
@@ -244,18 +304,17 @@ This is the config file (F<./vid-tag.conf>) format.
 The value of C<$gpEventId> is the primary key.
 
     [vid-tag "com"]
-        caption    = pCaption
-        copyright  = pCopyright
         file-pat   = %d_%e_%p_%f (pFilePatern)
+        title-pat  = %D, %c, %E, by %P. (pTitlePattern)
         name-long  = Photographer Name (pName)
         name-short = Initials (pInitial)
-        title-pat  = %D, %c, %E, by %P. (pTitlePattern)
+        copyright  = pCopyright
+        caption    = pCaption
     [vid-tag "pEventId"]
-        title      = Long Event Title (pEventName)
-        extra      = Second line for title. (pExtra)
+        title      = Long Event Title (pEventTitle)
         city       = pCity
         keyword    = word, word (pKeyword)
-        date       = YYYY-MM-DD_HH:MM:SS (date read from first file)
+        extra      = Second sentence for title. (pExtra) - optional
 
 extra - is optional, but if defined, it must end with a '.'
 
@@ -284,18 +343,16 @@ These are internal variables.
 
 =head1 ERRORS
 
-Fatal:
-
     + No input files given.
     + exiftool is not installed or not on PATH.
     + File not found: <filename>
 
 Warnings (processing continues):
 
-    + No CreateDate in <file>; using file mtime.
-    + output/<file> already exists, skipping link.
+    + No CreateDate in <file>; using file mtime
+    + output/<file> already exists
     + target exists, skipping: <old> -> <new>
-    + exiftool returned non-zero on <file>
+    + exiftool returned error on <file>
 
 =for comment =head1 EXAMPLES
 
@@ -305,19 +362,42 @@ HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
 
 =head1 FILES
 
-    ./vid-tag.conf - config file describing tags for an event
+=head2 vid-tag-N.N.zip
+
+    vid-tag      - this script
+    vid-tag.inc  - vid-tag functions
+    vid-tag.conf - sample config file describing tags for an event
+    bash-com.inc - utility functions
+    LICENSE      - GPLv2
+
     ./vid-tag-example.txt - lists the changes to files
     ./output/      - generated directory, with renamed copies of files
 
-    ./vid-tag      - this script
-    ./vid-tag.inc  - vid-tag functions
-    ./bash-com.inc - utility functions
-    
-    ./vid-tag.test - optional unit and CLI integration tests
-    ./vid-tag-test-input.zip - only needed for testCli* tests
-    ./shunit2.1    - unit test framework for vid-tag.test
-    
+=head2 Generated files
+
+    vid-tag.conf - if missing, it will be created with defaults and CLI args
+    vid-tag-example.txt - lists the changes to files based on vid-tag.conf
+    output/      - generated directory, with renamed copies of files
+
+=head2 vid-tag-test-N.N.zip
+
+This package is for testing the vid-tag script. See the NOTES section
+
+    vid-tag.test - optional unit and CLI integration tests
+    shunit2.1    - unit test framework for vid-tag.test
+
+=head2 vid-tag-test-input.zip (4.5G)
+
+Optional video files used by vid-tag.test. Only needed for
+the testCli*Slow tests. 
+
+    MVI_0107.MP4
+    MVI_0110.MP4
+    MVI_0746.MP4
+
 =head1 SEE ALSO
+
+Required: Linux OS (see CAVEATS for Windows and MacOS)
 
 Required: bash, exiftool, git config, ffmpeg, sed
 
@@ -326,13 +406,22 @@ Optional: vid-tag.test
 =head1 NOTES
 
 All of this code is maintained at:
-https://github.com/TurtleEngr/vid-tag The releases are are marked with
-vN.N tags.
 
-The latest packaged zip file, vid-tag-VER.zip, can be found at:
-https://moria.whyayh.com/rel/released/software/own/vid-tag/
+    https://github.com/TurtleEngr/vid-tag
 
-=for comment =head1 CAVEATS
+The releases are marked with vN.N tags.
+
+=head1 CAVEATS
+
+This script is mainly for Linux systems. However, if you have CygWin
+installed on your Windows PC, and you have install the Required
+packages (and set your PATH env.) this could work. For MacOS you'll
+probably want to install "brew" to get the Required programs.
+
+If you do get this running on Windows or MacOS, let me know, with an
+"issue" report, what you had to do to get it running. For example
+include programs needed, configuration directions, and any changes
+you made to the scripts.
 
 =head1 DIAGNOSTICS
 
@@ -340,11 +429,19 @@ This tool comes with a test script to verify vid-tag script is working
 OK.  Download these files:
 
     vid-tag-test-VER.zip
-    vid-tag-test-input.zip
+    vid-tag-test-input.zip (4.5G)
 
 from: https://moria.whyayh.com/rel/released/software/own/vid-tag/
 
-After unzipping the files run ./vid-tag.test to get usage help.
+Unzip vid-tag-test-VER.zip to the install dir.
+
+Unzip vid-tag-test-input.zip to a "test" directory. In the test
+directory run vid-tag.test.
+
+If you don't have space for the vid-tag-test-input.zip files, just use
+the "fast" test option for vid-tag.test. For example:
+
+    vid-tag.test -T fast
 
 =head1 BUGS
 

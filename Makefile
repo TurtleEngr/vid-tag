@@ -90,7 +90,7 @@ pkg :
 	mkdir -p $@
 
 pkg/vid-tag-$(cVer).zip :
-	zip $@ vid-tag vid-tag.inc bash-com.inc LICENSE
+	zip $@ vid-tag vid-tag.inc vid-tag.conf bash-com.inc LICENSE
 
 pkg/vid-tag-test-$(cVer).zip :
 	zip $@ vid-tag.test bash-com.test shunit2.1

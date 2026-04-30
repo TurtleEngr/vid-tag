@@ -74,6 +74,9 @@ release-test : package-test
 		pkg/vid-tag-test-input.zip \
 		moria:/rel/released/software/own/vid-tag/
 
+install : build
+	cp -i vid-tag vid-tag.inc vid-tag.test ~/bin/
+
 # --------------------
 # Single targets
 
@@ -116,3 +119,4 @@ MVI_0110.MP4 :
 MVI_0746.MP4 :
 	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP moria:/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@
+

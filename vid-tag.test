@@ -1413,6 +1413,186 @@ testValidate_FilesExist() {
     return 0
 } # testValidate_FilesExist
 
+# --------------------------------
+testExample_NoExec() {
+    # When gpNoExec is set, fExample uses a dummy "FILE.mp4" entry with
+    # the current wall-clock CreateDate; no real files are touched.
+    local tFile="vid-tag-example.txt"
+    local tContent
+    local tToday
+
+    rm -f "$tFile"
+
+    # Set globals as if -n -e testevent had been parsed
+    gpNoExec=1
+    gpEventId="testevent"
+    gpCaption="Test Caption Body"
+    gpCopyright="Copyright Photog 2030"
+    gpNameLong="Some Photographer"
+    gpNameShort="SP"
+    gpEventCity="TestCity"
+    gpEventTitle="Test Event Title"
+    gpEventKeyword="kw1,kw2"
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%D, %c, %E, by %P.'
+    gpEventFileList=""
+    gpCmdLine="vid-tag -n -e testevent"
+
+    fExample
+
+    assertTrue "$LINENO file created"  "[ -f $tFile ]"
+
+    tContent=$(cat "$tFile")
+
+    # ----- Header sections -----
+    assertContains "$LINENO Command hdr"  "$tContent" "Command:"
+    assertContains "$LINENO Cmd line"     "$tContent" "vid-tag -n -e testevent"
+    assertContains "$LINENO Files hdr"    "$tContent" "Files:"
+    assertContains "$LINENO Exif hdr"     "$tContent" "Exif Changes:"
+
+    # ----- Dummy filename: "FILE.mp4" mapped via the file pattern -----
+    assertContains "$LINENO dummy in"     "$tContent" "FILE.mp4 -> output/"
+    assertContains "$LINENO dummy out"    "$tContent" "_testevent_SP_FILE.mp4"
+
+    # ----- Today's date should appear in Create Date -----
+    tToday=$('date' +%Y:%m:%d)
+    assertContains "$LINENO today"        "$tContent" "Create Date = $tToday"
+
+    # ----- Tag fields written from gp* values -----
+    assertContains "$LINENO Title"        "$tContent" "Title ="
+    assertContains "$LINENO TestCity"     "$tContent" "TestCity"
+    assertContains "$LINENO Author"       "$tContent" "Author = Some Photographer"
+    assertContains "$LINENO Artist"       "$tContent" "Artist = Copyright Photog 2030"
+    assertContains "$LINENO Copyright"    "$tContent" "Copyright = Copyright Photog 2030"
+    assertContains "$LINENO Keywords"     "$tContent" "Keywords = kw1,kw2"
+    assertContains "$LINENO Caption"      "$tContent" "Caption = Test Caption Body"
+    assertContains "$LINENO Description"  "$tContent" "Description = (see Caption)"
+    assertContains "$LINENO ImageDesc"    "$tContent" "Image Description = (see Caption)"
+    assertContains "$LINENO DateTimeOrig" "$tContent" "Date/Time Original = (see Create Date)"
+    assertContains "$LINENO ModifyDate"   "$tContent" "Modify Date = (see Create Date)"
+    assertContains "$LINENO TrackCreate"  "$tContent" "Track Create Date = (see Create Date)"
+    assertContains "$LINENO TrackModify"  "$tContent" "Track Modify Date = (see Create Date)"
+    assertContains "$LINENO MediaCreate"  "$tContent" "Media Create Date = (see Create Date)"
+    assertContains "$LINENO MediaModify"  "$tContent" "Media Modify Date = (see Create Date)"
+
+    # ----- Single dummy entry → exactly one mapping line -----
+    assertEquals "$LINENO 1 entry" "1" \
+        "$(grep -c 'FILE.mp4 -> output/' "$tFile")"
+    assertEquals "$LINENO idx"     "1" "$gExampleIdx"
+
+    rm -f "$tFile"
+    return 0
+} # testExample_NoExec
+
+# --------------------------------
+testExample_NoExecExtra() {
+    # When gpEventExtra is set, fExample appends it (plus a trailing '.')
+    # to the title - same rule as fProcessFile.
+    local tFile="vid-tag-example.txt"
+    local tContent
+
+    rm -f "$tFile"
+
+    gpNoExec=1
+    gpEventId="testevent"
+    gpCaption="x"
+    gpCopyright="x"
+    gpNameLong="x"
+    gpNameShort="x"
+    gpEventCity="x"
+    gpEventTitle="Base Title"
+    gpEventKeyword="x"
+    gpEventExtra="More info"
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%E'
+    gpCmdLine="vid-tag -n -e testevent"
+
+    fExample
+    tContent=$(cat "$tFile")
+
+    assertContains "$LINENO extra appended" "$tContent" \
+        "Title = Base Title More info."
+
+    rm -f "$tFile"
+    return 0
+} # testExample_NoExecExtra
+
+# --------------------------------
+testExample_RealFiles() {
+    # With gpNoExec=0 and the unzipped test inputs in place, fExample
+    # should read each file's exif CreateDate and emit one Files: line
+    # plus one Exif Changes block per input.
+    local tFile="vid-tag-example.txt"
+    local tContent
+
+    if [[ ! -f MVI_0107.MP4 || ! -f MVI_0110.MP4 ]]; then
+        startSkipping
+    fi
+
+    rm -f "$tFile"
+
+    gpNoExec=0
+    gpEventId="testevent"
+    gpCaption="This photo or video may be downloaded and used freely"
+    gpCopyright="Copyright Bruce Rafnel 2026"
+    gpNameLong="Bruce Rafnel"
+    gpNameShort="BAR"
+    gpEventCity="Redwood City"
+    gpEventTitle="This is a test title"
+    gpEventKeyword="PBP,Protest"
+    gpEventExtra=""
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%D, %c, %E, by %P.'
+    gpEventFileList="MVI_0107.MP4 MVI_0110.MP4"
+    gpCmdLine="vid-tag -e testevent MVI_0107.MP4 MVI_0110.MP4"
+
+    fExample
+
+    assertTrue "$LINENO file created" "[ -f $tFile ]"
+
+    tContent=$(cat "$tFile")
+
+    # ----- Header lines -----
+    assertContains "$LINENO Command"  "$tContent" "Command:"
+    assertContains "$LINENO Cmd line" "$tContent" \
+        "vid-tag -e testevent MVI_0107.MP4 MVI_0110.MP4"
+
+    # ----- Files: section: rename mapping per input -----
+    assertContains "$LINENO 0107 rename" "$tContent" \
+        "MVI_0107.MP4 -> output/2016-11-21_testevent_BAR_MVI_0107.MP4"
+    assertContains "$LINENO 0110 rename" "$tContent" \
+        "MVI_0110.MP4 -> output/2016-11-21_testevent_BAR_MVI_0110.MP4"
+
+    # ----- Exif Changes blocks: one header + dated CreateDate per file -----
+    assertContains "$LINENO 0107 hdr" "$tContent" \
+        "2016-11-21_testevent_BAR_MVI_0107.MP4"
+    assertContains "$LINENO 0107 title" "$tContent" \
+        "Title = 2016-11-21 Mon, Redwood City, This is a test title, by Bruce Rafnel."
+    assertContains "$LINENO 0107 cdate" "$tContent" \
+        "Create Date = 2016:11:21 00:20:59"
+
+    assertContains "$LINENO 0110 hdr" "$tContent" \
+        "2016-11-21_testevent_BAR_MVI_0110.MP4"
+    assertContains "$LINENO 0110 title" "$tContent" \
+        "Title = 2016-11-21 Mon, Redwood City, This is a test title, by Bruce Rafnel."
+    assertContains "$LINENO 0110 cdate" "$tContent" \
+        "Create Date = 2016:11:21 00:29:11"
+
+    # ----- Tag fields shared across both files -----
+    assertContains "$LINENO Author"   "$tContent" "Author = Bruce Rafnel"
+    assertContains "$LINENO Artist"   "$tContent" "Artist = Copyright Bruce Rafnel 2026"
+    assertContains "$LINENO Copyright" "$tContent" "Copyright = Copyright Bruce Rafnel 2026"
+    assertContains "$LINENO Keywords" "$tContent" "Keywords = PBP,Protest"
+
+    # ----- Two collected entries → two rename lines, idx=2 -----
+    assertEquals "$LINENO 2 entries" "2" \
+        "$(grep -c '\->\ output/' "$tFile")"
+    assertEquals "$LINENO idx" "2" "$gExampleIdx"
+
+    rm -f "$tFile"
+    return 0
+} # testExample_RealFiles
+
 # -------------------
 # This should be the last defined function
 fRunTests() {

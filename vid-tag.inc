@@ -25,6 +25,16 @@ export gpNameShort
 export gpNoExec
 export gpTitlePat
 
+# Captured command line for the example file.  Set in vid-tag main.
+export gpCmdLine
+
+# Per-file collection arrays used by fExample.  Indexed by gExampleIdx.
+declare -ag gExampleOrigNames
+declare -ag gExampleNewNames
+declare -ag gExampleTitles
+declare -ag gExampleCreateDates
+declare -ig gExampleIdx
+
 # ========================================
 # Script Functions
 
@@ -393,6 +403,15 @@ fSetGlobals() {
     gFileDateLong=""
     gFileDateShort=""
     gFileDateTouch=""
+
+    # -------------------
+    # fExample collection state
+    gpCmdLine=${gpCmdLine:-""}
+    gExampleOrigNames=()
+    gExampleNewNames=()
+    gExampleTitles=()
+    gExampleCreateDates=()
+    gExampleIdx=0
 
     # -------------------
     # Required and optional external programs
@@ -821,6 +840,164 @@ Skips (with a warning) any link target that already exists.
 =internal-cut
 EOF
 } # fCreateOutputDir
+
+# --------------------------------
+fExampleCollect() {
+    # Append one record to the gExample* collection arrays.
+    # $1 = original basename
+    # $2 = exiftool-format CreateDate "YYYY:MM:DD HH:MM:SS"
+    # Reads gpFilePat / gpTitlePat / gpEventExtra and the gFileDate*
+    # globals (already populated by fConvertDate).
+    local pBase="$1"
+    local pCreateDate="$2"
+
+    local tNewName
+    local tNewTitle
+
+    tNewName=$(  fApplyPattern "$gpFilePat"  "$pBase")
+    tNewTitle=$( fApplyPattern "$gpTitlePat" "$pBase")
+    if [[ -n "$gpEventExtra" ]]; then
+        tNewTitle="$tNewTitle $gpEventExtra."
+    fi
+
+    gExampleOrigNames[$gExampleIdx]="$pBase"
+    gExampleNewNames[$gExampleIdx]="$tNewName"
+    gExampleTitles[$gExampleIdx]="$tNewTitle"
+    gExampleCreateDates[$gExampleIdx]="$pCreateDate"
+    ((++gExampleIdx))
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fExampleCollect pBase pCreateDate
+
+Append one record (original name, new name, title, CreateDate) to the
+gExample* arrays and bump gExampleIdx.
+
+The gFileDate* globals must already be populated for the file (so that
+fApplyPattern produces the right %d / %D / %T expansions).
+
+=internal-cut
+EOF
+} # fExampleCollect
+
+# --------------------------------
+fExample() {
+    # Build vid-tag-example.txt showing what the next non-dry-run pass
+    # would do: rename mappings into ./output/ and the exif tags that
+    # will be set on each file.
+    #
+    # Called after fValidate / fSaveConf so all gp* config values are
+    # final.  When gpNoExec is set, no real files have been validated,
+    # so we use a single dummy entry: name "FILE.mp4" and CreateDate
+    # set to "now".  Otherwise we walk gpEventFileList and read each
+    # file's CreateDate via fReadFileDate.
+
+    local cExampleFile="vid-tag-example.txt"
+    local tBase
+    local tCmd
+    local tFile
+    local -i tIdx
+
+    # Reset the per-file collection arrays so repeated calls don't
+    # accumulate stale entries.
+    gExampleOrigNames=()
+    gExampleNewNames=()
+    gExampleTitles=()
+    gExampleCreateDates=()
+    gExampleIdx=0
+
+    # ---- Collection phase ----
+    if [[ $gpNoExec -ne 0 ]]; then
+        # Dummy entry: FILE.mp4 with the current local date/time
+        gFileDate=$('date' +"%Y:%m:%d %H:%M:%S")
+        fConvertDate "$gFileDate"
+        fExampleCollect "FILE.mp4" "$gFileDate"
+    else
+        for tFile in $gpEventFileList; do
+            tBase=$(basename "$tFile")
+            fReadFileDate "$tFile"
+            fExampleCollect "$tBase" "$gFileDate"
+        done
+    fi
+
+    # ---- Output phase ----
+    # Reconstruct the command line if vid-tag main did not capture it.
+    if [[ -n "$gpCmdLine" ]]; then
+        tCmd="$gpCmdLine"
+    else
+        tCmd="$cName"
+        [[ $gpNoExec -ne 0 ]] && tCmd+=" -n"
+        tCmd+=" -e $gpEventId"
+        [[ -n "$gpEventFileList" ]] && tCmd+=" $gpEventFileList"
+    fi
+
+    {
+        echo "Command:"
+        echo "    $tCmd"
+        echo "Files:"
+        for (( tIdx=0; tIdx < gExampleIdx; tIdx++ )); do
+            echo "    ${gExampleOrigNames[$tIdx]} -> $cOutputDir/${gExampleNewNames[$tIdx]}"
+        done
+        echo "Exif Changes:"
+        for (( tIdx=0; tIdx < gExampleIdx; tIdx++ )); do
+            echo "${gExampleNewNames[$tIdx]}"
+            echo "    Title = ${gExampleTitles[$tIdx]}"
+            echo "    Author = $gpNameLong"
+            echo "    Artist = $gpCopyright"
+            echo "    Copyright = $gpCopyright"
+            echo "    Keywords = $gpEventKeyword"
+            echo "    Caption = $gpCaption"
+            echo "    Description = (see Caption)"
+            echo "    Image Description = (see Caption)"
+            echo "    Create Date = ${gExampleCreateDates[$tIdx]}"
+            echo "    Date/Time Original = (see Create Date)"
+            echo "    Modify Date = (see Create Date)"
+            echo "    Track Create Date = (see Create Date)"
+            echo "    Track Modify Date = (see Create Date)"
+            echo "    Media Create Date = (see Create Date)"
+            echo "    Media Modify Date = (see Create Date)"
+        done
+    } > "$cExampleFile"
+
+    fLog -p info -m "Created $cExampleFile" -l $LINENO
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fExample
+
+Build B<vid-tag-example.txt> in the current directory.  The file shows:
+
+=internal-over 4
+
+=internal-item 1. The (re-constructed) command line.
+
+=internal-item 2. A "Files:" block listing each input file and its
+intended renamed path under cOutputDir.
+
+=internal-item 3. An "Exif Changes:" block listing the metadata tags
+that vid-tag will write to each renamed file.
+
+=internal-back
+
+When gpNoExec is set, a single dummy entry is generated using
+B<FILE.mp4> as the input name and the current wall-clock time as the
+CreateDate, so the user can preview their conf settings before
+supplying real files.  Otherwise each file in gpEventFileList is
+read via fReadFileDate to get its CreateDate.
+
+The per-file fields are accumulated into the gExample* arrays via
+fExampleCollect, indexed by gExampleIdx.  The collection is read in
+the output phase to format the file.
+
+=internal-cut
+EOF
+} # fExample
 
 # --------------------------------
 fAddMin() {

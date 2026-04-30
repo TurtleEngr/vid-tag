@@ -45,6 +45,10 @@ export gpTitlePat
 
 export cName=${BASH_SOURCE##*/}
 
+# Save original command line for fExample.  Done before any parsing so
+# the example file shows exactly what the user typed.
+export gpCmdLine="$cName $*"
+
 # -------------------
 # Set cCurDir because PWD may be unset under cron.
 if [[ -z "$PWD" ]]; then
@@ -113,6 +117,12 @@ fGetOpt "$@"
 fValidate
 
 fSaveConf
+
+# -------------------
+# Build vid-tag-example.txt (preview of renames + metadata).
+# Runs in both -n (dummy) and full-execute modes so the user always
+# has a record of the planned changes.
+fExample
 
 # -------------------
 # No-execute / dry-run exit.

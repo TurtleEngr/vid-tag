@@ -45,10 +45,12 @@ test-all :
 	./vid-tag.test -T all
 
 package : build pkg pkg/vid-tag-$(cVer).zip
+	git ci -am "Before package"
 
 package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
 
 release : package
+	git ci -am "Before release"
 	git tag -f v$(cVer)
 	git push --tags origin develop
 	gi co main

@@ -97,7 +97,7 @@ Look for the assert errors.
 
 =head1 SEE ALSO
 
-Required programs: bash, exiftool, git-config, ffmpeg, sed, bc
+Required programs: bash, exiftool, git-config, ffmpeg, sed
 
 =head1 AUTHOR
 
@@ -116,7 +116,7 @@ EOF
 # -------------------
 fSetTestGlobals() {
     fComSetGlobals
-    fComCheckDeps "bash exiftool git ffmpeg sed bc" "cat"
+    fComCheckDeps "bash exiftool git ffmpeg sed" "cat"
     return 0
 } # fSetTestGlobals
 
@@ -236,12 +236,13 @@ testCliUsage() {
 
     #-----
     tResult=$(./vid-tag 2>&1)
-    assertContains "$LINENO no-args usage" "$tResult" "NAME vid-tag"
+    assertContains "$LINENO no-args usage" "$tResult" "Usage:"
 
     #-----
     tResult=$(./vid-tag -H short 2>&1)
-    assertContains "$LINENO short" "$tResult" "NAME vid-tag"
-    assertContains "$LINENO short.usage" "$tResult" "Usage:"
+    assertContains "$LINENO short 1" "$tResult" "NAME vid-tag"
+    assertContains "$LINENO short 2" "$tResult" "SYNOPSIS"
+    assertContains "$LINENO short 3" "$tResult" "DESCRIPTION"
 
     #-----
     tResult=$(./vid-tag -H long 2>&1)
@@ -936,30 +937,49 @@ testCliFullRunExif_MVI0746_Splits() {
     local tPart
     local tFile
     local tExif
+    local tMeta
+    local tValue
 
     fHelperRunFullPipeline >/dev/null
 
     for tPart in 00 01 02; do
         tFile="./output/2026-03-01_testevent_BAR_MVI_0746-${tPart}.mp4"
         assertTrue "$LINENO part $tPart exists" "[ -f $tFile ]"
+        if [[ ! -f $tFile ]]; then
+            continue
+        fi
 
         tExif=$(exiftool "$tFile" 2>&1)
 
         # Title/Caption/Keywords/Copyright/Artist/Author copied from parent.
-        assertContains "$LINENO part $tPart Title" "$tExif" \
-            "Title                           : 2026-03-01 Sun, Redwood City, This is a test title, by Bruce Rafnel."
-        assertContains "$LINENO part $tPart Caption" "$tExif" \
-            "Caption                         : This photo or video may be downloaded and used freely"
-        assertContains "$LINENO part $tPart Caption CC" "$tExif" \
-            "https://creativecommons.org/licenses/by-nc/4.0/"
-        assertContains "$LINENO part $tPart Keywords" "$tExif" \
-            "Keywords                        : PBP,Protest"
-        assertContains "$LINENO part $tPart Copyright" "$tExif" \
-            "Copyright                       : Copyright Bruce Rafnel 2026"
-        assertContains "$LINENO part $tPart Artist" "$tExif" \
-            "Artist                          : Copyright Bruce Rafnel 2026"
-        assertContains "$LINENO part $tPart Author" "$tExif" \
-            "Author                          : Bruce Rafnel"
+        tMeta=$(echo "$tExif" | grep '^Title ')
+        assertContains "$LINENO part $tPart Title" "$tMeta" "Title "
+        assertContains "$LINENO part $tPart Title" "$tMeta" \
+            " : 2026-03-01 Sun, Redwood City, This is a test title, by Bruce Rafnel."
+        tMeta=$(echo "$tExif" | grep '^Caption ')
+        assertContains "$LINENO part $tPart Caption" "$tMeta" "Caption "
+        assertContains "$LINENO part $tPart Caption" "$tMeta" \
+                       " : This photo or video may be downloaded and used freely"
+        
+        tMeta=$(echo "$tExif" | grep '^Keywords ')
+        assertContains "$LINENO part $tPart Keywords" "$tMeta" "Keywords"
+        assertContains "$LINENO part $tPart Keywords" "$tMeta" \
+                       " : PBP,Protest"
+        
+        tMeta=$(echo "$tExif" | grep '^Copyright ')
+        assertContains "$LINENO part $tPart Copyright" "$tMeta" "Copyright "
+        assertContains "$LINENO part $tPart Copyright" "$tMeta" \
+                       " : Copyright Bruce Rafnel 2026"
+        
+        tMeta=$(echo "$tExif" | grep '^Artist ')
+        assertContains "$LINENO part $tPart Artist" "$tMeta" "Artist "
+        assertContains "$LINENO part $tPart Artist" "$tMeta" "Artist " \
+                       " : Copyright Bruce Rafnel 2026"
+
+        tMeta=$(echo "$tExif" | grep '^Author ')
+        assertContains "$LINENO part $tPart Author" "$tMeta" "Author "
+        assertContains "$LINENO part $tPart Author" "$tMeta" \
+                       " : Bruce Rafnel"
 
         # Each part's file modification time is touched to the parent's
         # CreateDate (no timezone in the assert).

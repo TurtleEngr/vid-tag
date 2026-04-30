@@ -84,10 +84,12 @@ and the file-system mtime.
 Files are copied to the ./output/ directory, so original files are
 not touched.
 
-Files (in ./output/) will be renamed using fFilePattern and exif
-values will be added. After that large files, greater than 10 min,
-will be split into multiple 10 min parts. Some hosting sites do not
-allow "large" files.
+Files (in ./output/) will be renamed using fFilePattern and the exif
+values will be added.
+
+Large files, greater than 10 min, will be split into multiple 10 min
+parts (because some hosting sites do not allow "large" files). The
+exif time stamps for the split files will update for each 10 min part.
 
 Defaults are read in this order (each layer overrides the previous):
 
@@ -298,7 +300,7 @@ HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
     
 =head1 SEE ALSO
 
-Required: bash, exiftool, git config, ffmpeg, sed, bc
+Required: bash, exiftool, git config, ffmpeg, sed
 
 Optional: vid-tag.test
 
@@ -394,7 +396,7 @@ fSetGlobals() {
 
     # -------------------
     # Required and optional external programs
-    fComCheckDeps "bash exiftool git ffmpeg sed bc" "cat"
+    fComCheckDeps "bash exiftool git ffmpeg sed" "cat"
 
     return
 
@@ -821,22 +823,83 @@ EOF
 } # fCreateOutputDir
 
 # --------------------------------
+fAddMin() {
+    # Add pMin minutes to an exiftool "Create Date" grep line and
+    # echo the adjusted timestamp in exiftool format.
+    local pRaw="$1"
+    local -i pMin=$2
+
+    local tDate
+    local tTime
+    local -i tH
+    local -i tM
+    local -i tS
+
+    # Strip the label, keeping only "YYYY:MM:DD HH:MM:SS"
+    tDate="${pRaw##*: }"
+
+    # Split into date and time parts
+    tTime="${tDate##* }"
+    tDate="${tDate%% *}"
+
+    IFS=':' read -r tH tM tS <<< "$tTime"
+    IFS=' '
+
+    # Remove any leading zeros for arithmetic
+    tM=$((10#$tM))
+    tH=$((10#$tH))
+
+    ((tM += pMin))
+    if [[ $tM -ge 60 ]]; then
+        ((tH += tM / 60))
+        ((tM %= 60))
+    fi
+
+    printf "%s %02d:%02d:%02d" "$tDate" "$tH" "$tM" "$tS"
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fAddMin "pCreateDateLine" pMinutes
+
+Add pMinutes to the timestamp found in a "Create Date" a grep'ed line
+from exiftool.  The result is echoed in exiftool format "YYYY:MM:DD
+HH:MM:SS".
+
+pCreateDateLine is the raw grep output, e.g.:
+    "Create Date                     : 2026:03:01 19:57:49"
+
+The label prefix is stripped automatically.  Only minute-to-hour
+overflow is handled; hour-to-day overflow is not expected for
+10-minute video segments.
+
+=internal-cut
+EOF
+} # fAddMin
+
+# --------------------------------
 fProcessFile() {
     # Rename + tag a single file.  Must be called with CWD == ./output/
     local pFile="$1"
 
+    local -i tH
+    local -i tM
+    local -i tS
+    local -i tIncMin
     local tBase
     local tCmd
-    local tH
-    local tI
-    local tKeep
+    local tCreateDate
+    local tDate
+    local tFile
     local tLength
-    local tM
     local tMin
     local tNewName
     local tNewTitle
+    local tPart
     local tRC
-    local tS
+    local tTime
 
     tBase=$(basename "$pFile")
 
@@ -849,12 +912,15 @@ fProcessFile() {
 
     fReadFileDate "$tBase"
 
+    # ----------
+    # Get the file's new name and the Title, using the patterns
     tNewName=$(  fApplyPattern "$gpFilePat"  "$tBase")
     tNewTitle=$( fApplyPattern "$gpTitlePat" "$tBase")
     if [[ -n "$gpEventExtra" ]]; then
         tNewTitle="$tNewTitle $gpEventExtra."
     fi
 
+    # ----------
     # Collision guard before rename.
     if [[ "$tBase" != "$tNewName" && -e "$tNewName" ]]; then
         fLog -p warning \
@@ -862,7 +928,8 @@ fProcessFile() {
         return 0
     fi
 
-    # One exiftool invocation: rename AND set all metadata fields.
+    # ----------
+    # Use exiftool to rename AND set all metadata fields.
     tCmd=(
         exiftool
         -overwrite_original
@@ -878,7 +945,8 @@ fProcessFile() {
         "$tBase"
     )
     fLog -p info -m "Rename: $tBase -> $tNewName" -l $LINENO
-    fLog -p info -m "Cmd: ${tCmd[*]}" -l $LINENO
+    fLog -p info -m "Set new meta values" -l $LINENO
+    fLog -p debug-1 -m "Cmd: ${tCmd[*]}" -l $LINENO
     "${tCmd[@]}" 2>&1 | while IFS= read -r tLine; do
         fLog -p info -m "$tLine" -l $LINENO
     done
@@ -889,33 +957,54 @@ fProcessFile() {
             -m "exiftool returned $tRC on $tBase" -l $LINENO
     fi
 
+    # ----------
     # Align filesystem mtime with the metadata's CreateDate.
-    touch -t "$gFileDateTouch" "$tNewName"
-    fLog -p info -m "touch -t $gFileDateTouch $tNewName" -l $LINENO
+    fLog -p info -m "touch -d "${gFileDateFull//_/ }" "$tNewName"" -l $LINENO
+    touch -d "${gFileDateFull//_/ }" "$tNewName"
 
-    # See if the file needs to be split
+    # ----------
+    # See if the file needs to be split. I.e. greater than 10 min
     tLength=$(ffmpeg -i $tNewName 2>&1 | grep -oP 'Duration: \K[\d:]+(?=\.)')
     IFS=':' read -r tH tM tS <<< "$tLength"
     IFS=' '
-    tMin=$(echo "$tH * 60 + $tM + $tS / 60" | bc)
+    ((tMin = $tH * 60 + $tM))
     if [[ $tMin -le 10 ]]; then
         return 0
     fi
 
-    fLog -m "Split $tNewName into 10min parts"
+    # ----------
+    # Yes, split the file
+    fLog -m "Split $tNewName into 10min parts" -l LINENO
     ffmpeg -i $tNewName -c copy -map 0 -segment_time 00:10:00 -f segment -reset_timestamps 1 ${tNewName%.*}-%02d.mp4 >/dev/null 2>&1
 
     fLog -p info -m "Copy the exif data from original" -l $LINENO
-    tKeep='--FileName --Title --Caption --CaptionAbstract --Copyright --Artist --Author --Keywords --*date* --MakerNotes'
-    for tI in ${tNewName%.*}-*.mp4; do
-        fLog -p info -m "exiftool -TagsFromFile $tNewName -all:all $tKeep $tI" -l $LINENO
-        exiftool -TagsFromFile $tNewName -all:all $tKeep $tI >/dev/null 2>&1
+    tCreateDate=$(exiftool $tNewName | grep 'Create Date')
+    for tFile in ${tNewName%.*}-*.mp4; do
+        fLog -p info -m "exiftool -TagsFromFile $tNewName -all:all $tFile" -l $LINENO
+        exiftool -TagsFromFile $tNewName -all:all $tFile >/dev/null 2>&1
+        
+        # Increment the times for the parts
+        tPart=${tFile%.mp4}
+        tPart=${tPart##*-}
+        ((tIncMin=tPart * 10))
+        tNewTime=$(fAddMin "$tCreateDate" $tIncMin)
+        exiftool \
+            -DateTimeOriginal="$tNewTime" \
+            -CreateDate="$tNewTime" \
+            -ModifyDate="$tNewTime" \
+            -TrackCreateDate="$tNewTime" \
+            -TrackModifyDate="$tNewTime" \
+            -MediaCreateDate="$tNewTime" \
+            -MediaModifyDate="$tNewTime" \
+            $tFile
+
+        # Now set the file's timestamp
+        tDate=${tNewTime% *}
+        tTime=${tNewTime#* }
+        fLog -p info -m "touch -d \"${tDate//:/-} $tTime\" $tFile" -l $LINENO
+        touch -d "${tDate//:/-} $tTime" $tFile
     done
     rm *_original
-
-    fLog -p info -m "Fix the timestamps" -l $LINENO
-    touch -t "$gFileDateTouch" ${tNewName%.*}-*.mp4
-    fLog -p info -m "touch -t $gFileDateTouch ${tNewName%.*}-*.mp4" -l $LINENO
 
     return 0
 

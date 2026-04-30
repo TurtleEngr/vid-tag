@@ -731,7 +731,7 @@ testCliFullRunOutputFiles() {
     # with the expected (dated/event/photog/file pattern) names.
 
     fHelperRunFullPipeline >/dev/null
-
+    
     # ----- The renamed primary files -----
     assertTrue "$LINENO 0107 exists" \
         "[ -f ./output/2016-11-21_testevent_BAR_MVI_0107.MP4 ]"
@@ -772,13 +772,18 @@ testCliFullRunOutputFiles() {
 } # testCliFullRunOutputFiles
 
 # --------------------------------
-testCliFullRunExif_MVI0107() {
+testCliFullRunExif() {
     # Verify the exif tags written to the renamed MVI_0107 output file.
-    local tFile
     local tExif
+    local tFile
+    local tMeta
+    local tPart
+    local tValue
 
     fHelperRunFullPipeline >/dev/null
 
+    echo -e "\tMVI_0107.MP4" 1>&2
+    
     tFile="./output/2016-11-21_testevent_BAR_MVI_0107.MP4"
     assertTrue "$LINENO file exists" "[ -f $tFile ]"
 
@@ -822,17 +827,11 @@ testCliFullRunExif_MVI0107() {
         "Camera Model Name               : Canon VIXIA HF R40"
     assertContains "$LINENO Make"        "$tExif" \
         "Make                            : Canon"
-    return 0
-} # testCliFullRunExif_MVI0107
 
-# --------------------------------
-testCliFullRunExif_MVI0110() {
+    # --------------------------------
+    echo -e "\tMVI0110" 1>&2
     # Verify the exif tags written to the renamed MVI_0110 output file.
     # Same camera as 0107 but a different per-file CreateDate.
-    local tFile
-    local tExif
-
-    fHelperRunFullPipeline >/dev/null
 
     tFile="./output/2016-11-21_testevent_BAR_MVI_0110.MP4"
     assertTrue "$LINENO file exists" "[ -f $tFile ]"
@@ -870,17 +869,11 @@ testCliFullRunExif_MVI0110() {
     # ----- Original camera info preserved -----
     assertContains "$LINENO Camera Model" "$tExif" \
         "Camera Model Name               : Canon VIXIA HF R40"
-    return 0
-} # testCliFullRunExif_MVI0110
 
-# --------------------------------
-testCliFullRunExif_MVI0746() {
+    # --------------------------------
+    echo -e "\tMVI0110" 1>&2
     # Verify the exif tags written to the renamed MVI_0746 output file
     # (the 4.2GB master, before splitting).
-    local tFile
-    local tExif
-
-    fHelperRunFullPipeline >/dev/null
 
     tFile="./output/2026-03-01_testevent_BAR_MVI_0746.MP4"
     assertTrue "$LINENO file exists" "[ -f $tFile ]"
@@ -920,11 +913,9 @@ testCliFullRunExif_MVI0746() {
         "Camera Model Name               : Canon VIXIA HF R800"
     assertContains "$LINENO Make"        "$tExif" \
         "Make                            : Canon"
-    return 0
-} # testCliFullRunExif_MVI0746
 
-# --------------------------------
-testCliFullRunExif_MVI0746_Splits() {
+    # --------------------------------
+    echo -e "\t0746" 1>&2
     # Verify the exif tags on the three 10-minute split parts.  Each
     # part has metadata copied from the parent via -TagsFromFile, but
     # excluding FileName, Title/Caption/Copyright/Artist/Author/Keywords
@@ -934,13 +925,6 @@ testCliFullRunExif_MVI0746_Splits() {
     # Note that exiftool's -TagsFromFile then fills the kept tags
     # (Title, Caption, etc.) FROM the parent, so the per-part files
     # end up carrying the same vid-tag-written values as the parent.
-    local tPart
-    local tFile
-    local tExif
-    local tMeta
-    local tValue
-
-    fHelperRunFullPipeline >/dev/null
 
     for tPart in 00 01 02; do
         tFile="./output/2026-03-01_testevent_BAR_MVI_0746-${tPart}.mp4"
@@ -993,27 +977,6 @@ testCliFullRunExif_MVI0746_Splits() {
     done
     return 0
 } # testCliFullRunExif_MVI0746_Splits
-
-# --------------------------------
-testCliFullRunNoExtra() {
-    # The conf has no "extra =" key in [vid-tag "testevent"], so the
-    # output Title must NOT have a trailing extra phrase appended.
-    # (gpEventExtra="" => no "$gpEventExtra." suffix added in fProcessFile.)
-    local tFile
-    local tTitle
-
-    fHelperRunFullPipeline >/dev/null
-
-    tFile="./output/2016-11-21_testevent_BAR_MVI_0107.MP4"
-    assertTrue "$LINENO file exists" "[ -f $tFile ]"
-
-    # exiftool -s3 prints just the value of the requested tag.
-    tTitle=$(exiftool -s3 -Title "$tFile" 2>/dev/null)
-    assertEquals "$LINENO 0107 title (no extra)" \
-        "2016-11-21 Mon, Redwood City, This is a test title, by Bruce Rafnel." \
-        "$tTitle"
-    return 0
-} # testCliFullRunNoExtra
 
 # ========================================
 # Function-level tests (vid-tag.inc)

@@ -959,7 +959,7 @@ fProcessFile() {
 
     # ----------
     # Align filesystem mtime with the metadata's CreateDate.
-    fLog -p info -m "touch -d "${gFileDateFull//_/ }" "$tNewName"" -l $LINENO
+    fLog -p info -m "touch -d \"${gFileDateFull//_/ }\" \"$tNewName\"" -l $LINENO
     touch -d "${gFileDateFull//_/ }" "$tNewName"
 
     # ----------

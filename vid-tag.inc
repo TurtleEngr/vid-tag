@@ -92,6 +92,11 @@ Keywords metadata using B<exiftool>.  The file's B<Create Date> metadata
 is read and used to date-stamp the output file name, the output title,
 and the file-system mtime.
 
+An example file, ./vid-tag-example.txt, will be created to show the
+changes to the file with the current settings. This is best used with
+the -n option and include all the files, so the time stamps will match
+what is in the files.
+
 Files are copied to the ./output/ directory, so original files are
 not touched.
 
@@ -299,6 +304,7 @@ HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
 =head1 FILES
 
     ./vid-tag.conf - config file describing tags for an event
+    ./vid-tag-example.txt - lists the changes to files
     ./output/      - generated directory, with renamed copies of files
 
     ./vid-tag      - this script

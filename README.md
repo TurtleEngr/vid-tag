@@ -27,13 +27,20 @@ Keywords metadata using **exiftool**.  The file's **Create Date** metadata
 is read and used to date-stamp the output file name, the output title,
 and the file-system mtime.
 
+An example file, ./vid-tag-example.txt, will be created to show the
+changes to the file with the current settings. This is best used with
+the -n option and include all the files, so the time stamps will match
+what is in the files.
+
 Files are copied to the ./output/ directory, so original files are
 not touched.
 
-Files (in ./output/) will be renamed using fFilePattern and exif
-values will be added. After that large files, greater than 10 min,
-will be split into multiple 10 min parts. Some hosting sites do not
-allow "large" files.
+Files (in ./output/) will be renamed using fFilePattern and the exif
+values will be added.
+
+Large files, greater than 10 min, will be split into multiple 10 min
+parts (because some hosting sites do not allow "large" files). The
+exif time stamps for the split files will update for each 10 min part.
 
 Defaults are read in this order (each layer overrides the previous):
 
@@ -222,6 +229,7 @@ HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
 # FILES
 
     ./vid-tag.conf - config file describing tags for an event
+    ./vid-tag-example.txt - lists the changes to files
     ./output/      - generated directory, with renamed copies of files
 
     ./vid-tag      - this script
@@ -235,7 +243,7 @@ HOME, USER, Tmp, gpVerbose, gpDebug, gpConfLocal
 
 # SEE ALSO
 
-Required: bash, exiftool, git config, ffmpeg, sed, bc
+Required: bash, exiftool, git config, ffmpeg, sed
 
 Optional: vid-tag.test
 
@@ -249,4 +257,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-cVer=1.0
+cVer=1.1

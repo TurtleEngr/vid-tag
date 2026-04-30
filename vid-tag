@@ -15,7 +15,7 @@
 
 set -u
 
-export cVer=1.2
+export cVer=1.2.1
 export cExampleFile
 export cOutputDir
 

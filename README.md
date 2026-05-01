@@ -91,11 +91,14 @@ option.
 
 - See the -f option for how you can change the file naming
 pattern, and the -t option for how you can change the Title pattern.
+- Use the -v option to see some progress information. Use -vv if
+you want to see more progress details.
 - After each run, the vid-tag.conf file is updated with any
 changes, and the vid-tag-example.txt file will summarize how the files
 are modified.
-- Between each run you should remove everything in the outputs/
-directory.  Your orginal files will not be modified.
+- Between each run you should probably remove everything in the
+outputs/ directory. Or you can leave the files there and they will be
+skipped from any changes.
 
 # OPTIONS
 

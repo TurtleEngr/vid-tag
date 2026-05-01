@@ -101,10 +101,14 @@ directory.  Your orginal files will not be modified.
 
 - **-e "pEventId"**
 
-    Short event tag used in file names; spaces are converted to '\_'.
+    Short event tag used in file names. It is also the Id used to access
+    the specific event details. If the pEventId is not found in
+    vid-tag.conf, then it will be added to vid-tag.conf.
+
     Pattern token: **%e**.  Config key: `event.tag`. Required: "pEventId"
 
-    The value will be changed to lower-case.
+    The value will be changed to lower-case and any spaces will be changed
+    to '\_'
 
 - **-E "pEventTitle"**
 

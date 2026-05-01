@@ -1,16 +1,20 @@
 set -u
 
 export cVer=1.2.2
+export cBin
 export cExampleFile
 export cOutputDir
 
-declare -lx gpEventId
+# Internal globals
 export gFile
 export gFileDate
 export gFileDateFull
 export gFileDateLong
 export gFileDateShort
 export gFileDateTouch
+
+# External globals (set externally or by cmd line options)
+declare -lx gpEventId
 export gpCaption
 export gpConfLocal
 export gpCopyright
@@ -175,12 +179,16 @@ option.
 =item See the -f option for how you can change the file naming
 pattern, and the -t option for how you can change the Title pattern.
 
+=item Use the -v option to see some progress information. Use -vv if
+you want to see more progress details.
+
 =item After each run, the vid-tag.conf file is updated with any
 changes, and the vid-tag-example.txt file will summarize how the files
 are modified.
 
-=item Between each run you should remove everything in the outputs/
-directory.  Your orginal files will not be modified.
+=item Between each run you should probably remove everything in the
+outputs/ directory. Or you can leave the files there and they will be
+skipped from any changes.
 
 =back
 
@@ -1326,7 +1334,7 @@ fProcessFile() {
             -m "$tBase not found in $cOutputDir; skipping." -l $LINENO
         return 0
     fi
-    fLog -m "Processing: $tBase" -l $LINENO
+    fLog -f -m "Processing: $tBase" -l $LINENO
 
     fReadFileDate "$tBase"
 

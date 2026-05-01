@@ -16,16 +16,20 @@
 set -u
 
 export cVer=1.2.2
+export cBin
 export cExampleFile
 export cOutputDir
 
-declare -lx gpEventId
+# Internal globals
 export gFile
 export gFileDate
 export gFileDateFull
 export gFileDateLong
 export gFileDateShort
 export gFileDateTouch
+
+# External globals (set externally or by cmd line options)
+declare -lx gpEventId
 export gpCaption
 export gpConfLocal
 export gpCopyright
@@ -40,6 +44,16 @@ export gpNameLong
 export gpNameShort
 export gpNoExec
 export gpTitlePat
+
+# Captured command line for the example file.  Set in vid-tag main.
+export gpCmdLine
+
+# Per-file collection arrays used by fExample.  Indexed by gExampleIdx.
+declare -ag gExampleOrigNames
+declare -ag gExampleNewNames
+declare -ag gExampleTitles
+declare -ag gExampleCreateDates
+declare -ig gExampleIdx
 
 # ========================================
 # Main

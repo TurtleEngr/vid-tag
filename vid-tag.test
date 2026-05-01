@@ -91,6 +91,10 @@ Run the unit test functions in this script.
 
 Look for the assert errors.
 
+If you have not unzipped vid-tag-test-input.zip in the current
+directory you will see these assert errors: "Missing test files" or
+"expected test files"
+
 =head1 FILES
 
     vid-tag
@@ -148,7 +152,11 @@ oneTimeSetUp() {
         fi
         unzip -o vid-tag-test-input.zip >/dev/null
     fi
-    
+
+    if [[ -f vid-tag.conf ]]; then
+        cp vid-tag.conf vid-tag.conf.sav
+    fi
+
     # Create default vid-tag.conf
     cat <<EOF >vid-tag.conf
 [vid-tag "com"]
@@ -163,17 +171,23 @@ oneTimeSetUp() {
 	title = This is a test title
 	keyword = PBP,Protest
 EOF
+
     # Save a pristine copy of the conf so setUp can restore it before
     # every test that mutates ./vid-tag.conf.
     if [[ -f vid-tag.conf ]]; then
         cp vid-tag.conf vid-tag.conf.original
     fi
+
     return 0
 } # oneTimeSetUp
 
 # --------------------------------
 oneTimeTearDown() {
     rm -f vid-tag.conf.original 2>/dev/null
+    if [[ -f vid-tag.conf.sav ]]; then
+        mv -f vid-tag.conf.sav vid-tag.conf 
+    fi
+
     return 0
 } # oneTimeTearDown
 
@@ -242,38 +256,38 @@ testCliUsage() {
     local tResult
 
     #-----
-    tResult=$(./vid-tag 2>&1)
+    tResult=$($cBin/vid-tag 2>&1)
     assertContains "$LINENO no-args usage" "$tResult" "Usage:"
 
     #-----
-    tResult=$(./vid-tag -H short 2>&1)
+    tResult=$($cBin/vid-tag -H short 2>&1)
     assertContains "$LINENO short 1" "$tResult" "NAME vid-tag"
     assertContains "$LINENO short 2" "$tResult" "SYNOPSIS"
     assertContains "$LINENO short 3" "$tResult" "DESCRIPTION"
 
     #-----
-    tResult=$(./vid-tag -H long 2>&1)
+    tResult=$($cBin/vid-tag -H long 2>&1)
     assertContains "$LINENO long.1" "$tResult" "DESCRIPTION"
     assertContains "$LINENO long.2" "$tResult" "HISTORY"
 
     #-----
-    tResult=$(./vid-tag -H man 2>&1)
+    tResult=$($cBin/vid-tag -H man 2>&1)
     assertContains "$LINENO man.1" "$tResult" '.IX Header "DESCRIPTION"'
     assertContains "$LINENO man.2" "$tResult" '.IX Header "HISTORY"'
 
     #-----
-    tResult=$(./vid-tag -H html 2>&1)
+    tResult=$($cBin/vid-tag -H html 2>&1)
     assertContains "$LINENO html.1" "$tResult" '<a href="#DESCRIPTION">DESCRIPTION</a>'
     assertContains "$LINENO html.2" "$tResult" '<h1 id="HISTORY">HISTORY</h1>'
     assertContains "$LINENO html.3" "$tResult" "<title>vid-tag Usage</title>"
 
     #-----
-    tResult=$(./vid-tag -H md 2>&1)
+    tResult=$($cBin/vid-tag -H md 2>&1)
     assertContains "$LINENO md.1" "$tResult" '# DESCRIPTION'
     assertContains "$LINENO md.2" "$tResult" '# HISTORY'
 
     #-----
-    tResult=$(./vid-tag -h 2>&1)
+    tResult=$($cBin/vid-tag -h 2>&1)
     assertContains "$LINENO -h.1" "$tResult" "DESCRIPTION"
     assertContains "$LINENO -h.2" "$tResult" "OPTIONS"
 
@@ -284,7 +298,7 @@ testCliUsage() {
 testCliVersion() {
     local tResult
 
-    tResult=$(./vid-tag -V 2>&1)
+    tResult=$($cBin/vid-tag -V 2>&1)
     assertContains "$LINENO -V version" "$tResult" "vid-tag version:"
     return 0
 } # testCliVersion
@@ -294,7 +308,7 @@ testCliMissingArgs() {
     local tResult
 
     # vid-tag with no args at all → "Missing required options."
-    tResult=$(./vid-tag 2>&1)
+    tResult=$($cBin/vid-tag 2>&1)
     assertContains "$LINENO no-args" "$tResult" "Usage:"
     return 0
 } # testCliMissingArgs
@@ -304,7 +318,7 @@ testCliMissingEventId() {
     local tResult
 
     # -n alone (no -e) → "Missing pEventId"
-    tResult=$(./vid-tag -n 2>&1)
+    tResult=$($cBin/vid-tag -n 2>&1)
     assertContains "$LINENO no-e" "$tResult" "Missing pEventId"
     return 0
 } # testCliMissingEventId
@@ -313,7 +327,7 @@ testCliMissingEventId() {
 testCliUnknownOption() {
     local tResult
 
-    tResult=$(./vid-tag -e testevent -Z 2>&1)
+    tResult=$($cBin/vid-tag -e testevent -Z 2>&1)
     assertContains "$LINENO unknown-opt" "$tResult" "Unknown option"
     return 0
 } # testCliUnknownOption
@@ -323,7 +337,7 @@ testCliMissingOptArg() {
     local tResult
 
     # -c without value → "Value required"
-    tResult=$(./vid-tag -e testevent -c 2>&1)
+    tResult=$($cBin/vid-tag -e testevent -c 2>&1)
     assertContains "$LINENO no-value-c" "$tResult" "Value required"
     return 0
 } # testCliMissingOptArg
@@ -333,7 +347,7 @@ testCliNoExec() {
     local tResult
 
     # -n + existing testevent conf (from oneTimeSetUp) → dry run
-    tResult=$(./vid-tag -v -n -e testevent 2>&1)
+    tResult=$($cBin/vid-tag -v -n -e testevent 2>&1)
     assertContains "$LINENO no-exec msg" "$tResult" "No-execute"
     assertContains "$LINENO no-exec conf" "$tResult" "vid-tag.conf"
 
@@ -349,7 +363,7 @@ testCliNoExecCreatesNewConf() {
     # Remove the conf so we can verify fresh-create behavior
     rm -f ./vid-tag.conf
 
-    tResult=$(./vid-tag -n -e brandnew 2>&1)
+    tResult=$($cBin/vid-tag -n -e brandnew 2>&1)
 
     # Conf should now exist
     assertTrue "$LINENO conf created" "[ -f ./vid-tag.conf ]"
@@ -370,7 +384,7 @@ testCliEventLowercase() {
     rm -f ./vid-tag.conf
 
     # gpEventId is "declare -lx", so MixedCase should become mixedcase
-    tResult=$(./vid-tag -n -e MixedCASE 2>&1)
+    tResult=$($cBin/vid-tag -n -e MixedCASE 2>&1)
 
     grep -q '\[vid-tag "mixedcase"\]' ./vid-tag.conf
     assertTrue "$LINENO lowercased" "[ $? -eq 0 ]"
@@ -385,7 +399,7 @@ testCliEventSpaceUnderscore() {
     rm -f ./vid-tag.conf
 
     # Spaces in -e are converted to underscores
-    ./vid-tag -n -e "two words" >/dev/null 2>&1
+    $cBin/vid-tag -n -e "two words" >/dev/null 2>&1
 
     grep -q '\[vid-tag "two_words"\]' ./vid-tag.conf
     assertTrue "$LINENO space->underscore" "[ $? -eq 0 ]"
@@ -394,7 +408,7 @@ testCliEventSpaceUnderscore() {
 
 # --------------------------------
 testCliCity() {
-    ./vid-tag -n -e testevent -c "Sample City" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -c "Sample City" >/dev/null 2>&1
 
     grep -q 'city = Sample City' ./vid-tag.conf
     assertTrue "$LINENO city saved" "[ $? -eq 0 ]"
@@ -403,7 +417,7 @@ testCliCity() {
 
 # --------------------------------
 testCliCaption() {
-    ./vid-tag -n -e testevent -C "My test caption" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -C "My test caption" >/dev/null 2>&1
 
     grep -q 'caption = My test caption' ./vid-tag.conf
     assertTrue "$LINENO caption saved" "[ $? -eq 0 ]"
@@ -412,7 +426,7 @@ testCliCaption() {
 
 # --------------------------------
 testCliCopyright() {
-    ./vid-tag -n -e testevent -R "Copyright Foo Bar 2030" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -R "Copyright Foo Bar 2030" >/dev/null 2>&1
 
     grep -q 'copyright = Copyright Foo Bar 2030' ./vid-tag.conf
     assertTrue "$LINENO copyright saved" "[ $? -eq 0 ]"
@@ -421,7 +435,7 @@ testCliCopyright() {
 
 # --------------------------------
 testCliEventTitle() {
-    ./vid-tag -n -e testevent -E "Long Event Description" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -E "Long Event Description" >/dev/null 2>&1
 
     grep -q 'title = Long Event Description' ./vid-tag.conf
     assertTrue "$LINENO event title saved" "[ $? -eq 0 ]"
@@ -430,7 +444,7 @@ testCliEventTitle() {
 
 # --------------------------------
 testCliKeyword() {
-    ./vid-tag -n -e testevent -k "kw1,kw2,kw3" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -k "kw1,kw2,kw3" >/dev/null 2>&1
 
     grep -q 'keyword = kw1,kw2,kw3' ./vid-tag.conf
     assertTrue "$LINENO keyword saved" "[ $? -eq 0 ]"
@@ -439,7 +453,7 @@ testCliKeyword() {
 
 # --------------------------------
 testCliShortName() {
-    ./vid-tag -n -e testevent -p ZZZ >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -p ZZZ >/dev/null 2>&1
 
     grep -q 'name-short = ZZZ' ./vid-tag.conf
     assertTrue "$LINENO short name saved" "[ $? -eq 0 ]"
@@ -448,7 +462,7 @@ testCliShortName() {
 
 # --------------------------------
 testCliLongName() {
-    ./vid-tag -n -e testevent -P "Some Photographer" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -P "Some Photographer" >/dev/null 2>&1
 
     grep -q 'name-long = Some Photographer' ./vid-tag.conf
     assertTrue "$LINENO long name saved" "[ $? -eq 0 ]"
@@ -457,7 +471,7 @@ testCliLongName() {
 
 # --------------------------------
 testCliFilePattern() {
-    ./vid-tag -n -e testevent -f '%d-%e-%f' >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -f '%d-%e-%f' >/dev/null 2>&1
 
     grep -q 'file-pat = %d-%e-%f' ./vid-tag.conf
     assertTrue "$LINENO file-pat saved" "[ $? -eq 0 ]"
@@ -469,14 +483,14 @@ testCliBadFilePattern() {
     local tResult
 
     # File pattern without any %tokens → fError "missing % options"
-    tResult=$(./vid-tag -n -e testevent -f "no-tokens-here" 2>&1)
+    tResult=$($cBin/vid-tag -n -e testevent -f "no-tokens-here" 2>&1)
     assertContains "$LINENO bad file-pat" "$tResult" "missing % options"
     return 0
 } # testCliBadFilePattern
 
 # --------------------------------
 testCliTitlePattern() {
-    ./vid-tag -n -e testevent -t '%D %E by %P' >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -t '%D %E by %P' >/dev/null 2>&1
 
     grep -q 'title-pat = %D %E by %P' ./vid-tag.conf
     assertTrue "$LINENO title-pat saved" "[ $? -eq 0 ]"
@@ -487,7 +501,7 @@ testCliTitlePattern() {
 testCliBadTitlePattern() {
     local tResult
 
-    tResult=$(./vid-tag -n -e testevent -t "no tokens" 2>&1)
+    tResult=$($cBin/vid-tag -n -e testevent -t "no tokens" 2>&1)
     assertContains "$LINENO bad title-pat" "$tResult" "missing % options"
     return 0
 } # testCliBadTitlePattern
@@ -497,7 +511,7 @@ testCliExtra() {
     # The -x value typically has a leading space; git-config may either
     # strip it or quote the whole value.  Match the substantive content
     # rather than the exact spacing.
-    ./vid-tag -n -e testevent -x " More info." >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -x " More info." >/dev/null 2>&1
 
     grep -q 'extra = .*More info\.' ./vid-tag.conf
     assertTrue "$LINENO extra saved" "[ $? -eq 0 ]"
@@ -509,7 +523,7 @@ testCliFileNotFound() {
     local tResult
 
     # Without -n, fValidate does check files; missing file → fatal
-    tResult=$(./vid-tag -e testevent /no/such/file.mp4 2>&1)
+    tResult=$($cBin/vid-tag -e testevent /no/such/file.mp4 2>&1)
     assertContains "$LINENO missing file" "$tResult" "File not found"
     return 0
 } # testCliFileNotFound
@@ -522,18 +536,18 @@ testCliVerboseLevels() {
 
     # Default verbose: only warning+. The notice "No-execute" message
     # should NOT appear.
-    tDefault=$(./vid-tag -n -e testevent 2>&1)
+    tDefault=$($cBin/vid-tag -n -e testevent 2>&1)
     # "No-execute" is at notice level, not visible by default
     if echo "$tDefault" | grep -q "No-execute"; then
         fail "$LINENO default level should NOT show notice"
     fi
 
     # -v: notice and above. "No-execute" SHOULD appear.
-    tV=$(./vid-tag -v -n -e testevent 2>&1)
+    tV=$($cBin/vid-tag -v -n -e testevent 2>&1)
     assertContains "$LINENO -v shows notice" "$tV" "No-execute"
 
     # -vv: info and above. "Saving local config" SHOULD appear.
-    tVV=$(./vid-tag -vv -n -e testevent 2>&1)
+    tVV=$($cBin/vid-tag -vv -n -e testevent 2>&1)
     assertContains "$LINENO -vv shows info" "$tVV" "Saving local config"
     return 0
 } # testCliVerboseLevels
@@ -547,7 +561,7 @@ testCliReadsExistingConf() {
     # section with name-short=BAR, name-long="Bruce Rafnel".
     # Running -n -e testevent should round-trip these values back to the
     # conf without losing them.
-    ./vid-tag -n -e testevent >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent >/dev/null 2>&1
 
     grep -q 'name-short = BAR' ./vid-tag.conf
     assertTrue "$LINENO BAR preserved" "[ $? -eq 0 ]"
@@ -569,7 +583,7 @@ testCliReadsExistingConf() {
 # --------------------------------
 testCliCmdLineOverridesConf() {
     # The conf has city="Redwood City"; -c overrides it
-    ./vid-tag -n -e testevent -c "OVERRIDE City" >/dev/null 2>&1
+    $cBin/vid-tag -n -e testevent -c "OVERRIDE City" >/dev/null 2>&1
 
     grep -q 'city = OVERRIDE City' ./vid-tag.conf
     assertTrue "$LINENO override city" "[ $? -eq 0 ]"
@@ -579,21 +593,10 @@ testCliCmdLineOverridesConf() {
     return 0
 } # testCliCmdLineOverridesConf
 
-# --------------------------------
-testCliEventNotInConf() {
-    local tResult
-
-    # The unzipped conf has only [vid-tag "testevent"]. Asking for an
-    # unknown event when the conf exists → "Event not found".
-    tResult=$(./vid-tag -n -e doesnotexist 2>&1)
-    assertContains "$LINENO event not found" "$tResult" "Event not found"
-    return 0
-} # testCliEventNotInConf
-
 # ========================================
 # Full-pipeline CLI tests
 #
-# These tests run ./vid-tag end-to-end on the three video files that
+# These tests run $cBin/vid-tag end-to-end on the three video files that
 # come out of vid-tag-test-input.zip:
 #
 #     MVI_0107.MP4   270 MiB   Canon VIXIA HF R40,  CreateDate 2016:11:21 00:20:59
@@ -612,11 +615,15 @@ testCliEventNotInConf() {
 
 # --------------------------------
 fHelperRunFullPipeline() {
-    # Wipe any previous output, then run ./vid-tag with all three test
+    # Wipe any previous output, then run $cBin/vid-tag with all three test
     # input files at -vv (info-level).  Stdout/stderr are stripped of
     # line-number markers and echoed back to the caller.
+    if [[ ! -f MVI_0107.MP4 ]]; then
+        return 1
+    fi
+
     rm -rf ./output 2>/dev/null
-    ./vid-tag -vv -e testevent \
+    $cBin/vid-tag -vv -e testevent \
         MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4 2>&1 | fStripLine
 } # fHelperRunFullPipeline
 
@@ -629,6 +636,10 @@ testCliFullRunStdoutSlow() {
 
     echo -e "\tfHelperRunFullPipeline"
     tResult=$(fHelperRunFullPipeline)
+    if [[ $? -ne 0 ]]; then
+        fail "$LINENO Missing test files."
+        return 0
+    fi
 
     # ----- Conf save / output dir creation -----
     assertContains "$LINENO save conf"   "$tResult" \
@@ -722,6 +733,10 @@ testCliFullRunOutputFilesSlow() {
 
     echo -e "\tfHelperRunFullPipeline"
     fHelperRunFullPipeline >/dev/null
+    if [[ $? -ne 0 ]]; then
+        fail "$LINENO Missing test files."
+        return 0
+    fi
     
     # ----- The renamed primary files -----
     assertTrue "$LINENO 0107 exists" \
@@ -773,6 +788,10 @@ testCliFullRunExifSlow() {
 
     echo -e "\tfHelperRunFullPipeline"
     fHelperRunFullPipeline >/dev/null
+    if [[ $? -ne 0 ]]; then
+        fail "$LINENO Missing test files."
+        return 0
+    fi
 
     echo -e "\tMVI_0107.MP4" 1>&2
     
@@ -965,11 +984,15 @@ testInitialConfig() {
     # so the function-level conf tests build the right section names.
     assertEquals "$LINENO cName"      "vid-tag"      "$cName"
     assertNotNull "$LINENO cBin"      "$cBin"
-    assertTrue   "$LINENO cBin dir"   "[ -d $cBin ]"
-    assertTrue   "$LINENO vid-tag x"  "[ -x $cBin/vid-tag ]"
-    assertTrue   "$LINENO vid-tag.inc" "[ -f $cBin/vid-tag.inc ]"
-    assertTrue   "$LINENO test files"  "[ -f MVI_0107.MP4 ]"
-    assertTrue   "$LINENO conf orig"   "[ -f vid-tag.conf.original ]"
+    assertTrue   "$LINENO cBin dir"     "[ -d $cBin ]"
+    assertTrue   "$LINENO vid-tag"      "[ -x $cBin/vid-tag ]"
+    assertTrue   "$LINENO vid-tag.inc"  "[ -f $cBin/vid-tag.inc ]"
+    assertTrue   "$LINENO bash-com.inc" "[ -f $cBin/bash-com.inc ]"
+    assertTrue   "$LINENO missing MVI_0107.MP4"  "[ -f MVI_0107.MP4 ]"
+    assertTrue   "$LINENO missing MVI_0110.MP4"  "[ -f MVI_0110.MP4 ]"
+    assertTrue   "$LINENO missing MVI_0746.MP4"  "[ -f MVI_0746.MP4 ]"
+    assertTrue   "$LINENO user conf"   "[ -f vid-tag.conf.sav ]"
+    assertTrue   "$LINENO test conf"   "[ -f vid-tag.conf.original ]"
     return 0
 } # testInitialConfig
 
@@ -1166,7 +1189,7 @@ CONF
 
     # fError is called → exit; capture output in a subshell
     tResult=$( (fLoadConf) 2>&1 )
-    assertContains "$LINENO not-found" "$tResult" "Event not found"
+    assertContains "$LINENO not-found" "$tResult" "not found, it will be added"
 
     # Restore
     gpConfLocal="./vid-tag.conf"
@@ -1412,14 +1435,16 @@ testValidate_MissingFile() {
 
 # --------------------------------
 testValidate_FilesExist() {
+    local tResult
+    
     # The unzipped test files should exist in the cwd
     gpFilePat='%d_%f'
     gpTitlePat='%D %P'
     gpNoExec=0
     gpEventFileList="MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4"
 
-    fValidate
-    assertTrue "$LINENO existing-files rc" "[ $? -eq 0 ]"
+    tResult=$( (fValidate) 2>&1 )
+    assertTrue "$LINENO expected test files: $gpEventFileList" "[ $? -eq 0 ]"
     return 0
 } # testValidate_FilesExist
 
@@ -1536,7 +1561,8 @@ testExample_RealFiles() {
     local tContent
 
     if [[ ! -f MVI_0107.MP4 || ! -f MVI_0110.MP4 ]]; then
-        startSkipping
+        fail "$LINENO Missing test files."
+        return 0
     fi
 
     rm -f "$tFile"
@@ -1608,7 +1634,8 @@ testExampleCollectSplit_Short() {
     # A file under 10 min must NOT produce any split entries.  Use
     # MVI_0107.MP4 (1:36 long) and confirm gExampleIdx stays 0.
     if [[ ! -f MVI_0107.MP4 ]]; then
-        startSkipping
+        fail "$LINENO Missing test files."
+        return 0
     fi
 
     gpEventId="testevent"
@@ -1639,8 +1666,10 @@ testExampleCollectSplit_Long() {
     # 10-min parts.  fExampleCollectSplit must mirror that, appending
     # three records with -00/-01/-02 names and CreateDates shifted by
     # 0, 10, and 20 minutes from the parent.
+    local i
     if [[ ! -f MVI_0746.MP4 ]]; then
-        startSkipping
+        fail "$LINENO Missing test files."
+        return 0
     fi
 
     gpEventId="testevent"
@@ -1702,7 +1731,8 @@ testExample_RealFilesWithSplit() {
     local tContent
 
     if [[ ! -f MVI_0746.MP4 ]]; then
-        startSkipping
+        fail "$LINENO Missing test files."
+        return 0
     fi
 
     rm -f "$tFile"

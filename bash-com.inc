@@ -463,6 +463,7 @@ fComUsage() {
         if [[ "$pStyle" = "html" ]]; then
             # shellcheck disable=SC2002
             cat $pFileList | $tProg --title="$pTitle" | $tTidy
+            rm pod2htmd.tmp >/dev/null 2>&1
         else
             if [[ "$pStyle" = "short" ]]; then
                 # shellcheck disable=SC2002

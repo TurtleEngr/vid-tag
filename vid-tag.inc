@@ -190,10 +190,14 @@ directory.  Your orginal files will not be modified.
 
 =item B<-e "pEventId">
 
-Short event tag used in file names; spaces are converted to '_'.
+Short event tag used in file names. It is also the Id used to access
+the specific event details. If the pEventId is not found in
+vid-tag.conf, then it will be added to vid-tag.conf.
+
 Pattern token: B<%e>.  Config key: C<event.tag>. Required: "pEventId"
 
-The value will be changed to lower-case.
+The value will be changed to lower-case and any spaces will be changed
+to '_'
 
 =item B<-E "pEventTitle">
 
@@ -588,12 +592,6 @@ fLoadConf() {
         fError -m "gpEventId not set; cannot read local config sections." -l $LINENO
     fi
 
-    # event.tag is the canonical source for gpEventId in local conf
-    tId=$(fComGetConfig -l -k "$cName.$gpEventId.title")
-    if [[ -z "$tId" ]]; then
-        fError -m "Event not found in $gpConfLocal" -l $LINENO
-    fi
-
     gpCaption=$(      fComGetConfig -l -k "$cName.com.caption"    -d "$gpCaption")
     gpCopyright=$(    fComGetConfig -l -k "$cName.com.copyright"  -d "$gpCopyright")
     gpFilePat=$(      fComGetConfig -l -k "$cName.com.file-pat"   -d "$gpFilePat")
@@ -601,6 +599,12 @@ fLoadConf() {
     gpNameShort=$(    fComGetConfig -l -k "$cName.com.name-short" -d "$gpNameShort")
     
     gpTitlePat=$(     fComGetConfig -l -k "$cName.com.title-pat" -d "$gpTitlePat")
+
+    # event.tag is the canonical source for gpEventId in local conf
+    tId=$(fComGetConfig -l -k "$cName.$gpEventId.title")
+    if [[ -z "$tId" ]]; then
+        fLog -p warn -m "Event $gpEventId not found, it will be added to $gpConfLocal" -l $LINENO
+    fi
 
     gpEventTitle=$(   fComGetConfig -l -k "$cName.$gpEventId.title"     -d "$gpEventTitle")
     gpEventExtra=$(   fComGetConfig -l -k "$cName.$gpEventId.extra"     -d "$gpEventExtra")

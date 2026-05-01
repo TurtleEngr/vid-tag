@@ -690,13 +690,16 @@ fPreScanOpts() {
                 ;;
             -h)
                 fUsage long
-                return 0
+                exit 0
                 ;;
             -H)
                 fUsage $2
-                return 0
+                exit 0
                 ;;
-            -V) return 0 ;;
+            -V)
+                echo "vid-tag version: $cVer"
+                exit 0
+                ;;
             -*)
                 # Unknown flag: skip it and its argument (if present)
                 shift

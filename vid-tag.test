@@ -281,6 +281,15 @@ testCliUsage() {
 } # testCliUsage
 
 # --------------------------------
+testCliVersion() {
+    local tResult
+
+    tResult=$(./vid-tag -V 2>&1)
+    assertContains "$LINENO -V version" "$tResult" "vid-tag version:"
+    return 0
+} # testCliVersion
+
+# --------------------------------
 testCliMissingArgs() {
     local tResult
 

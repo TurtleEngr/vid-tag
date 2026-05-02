@@ -1,6 +1,6 @@
 set -u
 
-export cVer=1.3
+export cVer=1.3.1
 export cBin
 export cExampleFile
 export cOutputDir
@@ -66,6 +66,15 @@ fUsage() {
         html)
             fComUsage -f $cBin/$cName.inc -s $pStyle -t "$cName Usage"
             ;;
+        int)
+            fComUsage -i -f $cBin/$cName.inc -f $cBin/$cName.test -f $cBin/bash-com.inc -f $cBin/bash-com.test -s long | more
+            ;;
+        int-html)
+            fComUsage -i -f $cBin/$cName.inc -f $cBin/$cName.test -f $cBin/bash-com.inc -f $cBin/bash-com.test -s html -t "$cName Internal Doc"
+            ;;
+        int-md)
+            fComUsage -i -f $cBin/$cName.inc -f $cBin/$cName.test -f $cBin/bash-com.inc -f $cBin/bash-com.test -s md
+            ;;
         *)
             fComUsage -f $cBin/$cName.inc -s usage
             ;;
@@ -89,7 +98,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 First run. Create config file: ./vid-tag.conf
 
-    vid-tag -n -e "pEventId"
+    vid-tag -n -e "pEventId" [File1 File2 ...]
 
 Edit config files, and/or use these options to override config file.
 
@@ -103,32 +112,36 @@ Edit config files, and/or use these options to override config file.
 =head1 DESCRIPTION
 
 vid-tag renames one or more video files and writes Title, Caption, and
-Keywords metadata using B<exiftool>.  The file's B<Create Date> metadata
-is read and used to date-stamp the output file name, the output title,
-and the file-system mtime.
+Keywords metadata using the C<exiftool>.  The file's C<Create Date>
+metadata is read and used to date-stamp the output file name, the
+output title, and the file-system mtime.
 
-An example file, ./vid-tag-example.txt, will be created to show the
-changes to the file with the current settings. This is best used with
-the -n option and include all the files, so the time stamps will match
-what is in the files.
+Files are copied to the ./output/ directory, so the original files are
+not changed in any way.
 
-Files are copied to the ./output/ directory, so original files are
-not touched.
-
-Files (in ./output/) will be renamed using fFilePattern and the exif
-values will be added.
+Files (in ./output/) will be renamed using the pFilePattern and the
+EXIF values will be added to the renamed files
 
 Large files, greater than 10 min, will be split into multiple 10 min
 parts (because some hosting sites do not allow "large" files). The
 exif time stamps for the split files will update for each 10 min part.
 
-Defaults are read in this order (each layer overrides the previous):
+An example file, C<./vid-tag-example.txt>, will be created to show the
+changes that are (or will be) made to the files with the current
+settings. This is best used with the -n option and if you include all the
+files, the time stamps will match what is in the files.
+
+If the timestamps for the files are "off" by a consistent amount
+the time-zone (-z) config option can be used to adjust the times.
+
+The config options are read in this order (each layer overrides the
+previous):
 
 =over 4
 
 =item Built-in script defaults.
 
-=item Local config: B<./vid-tag.conf> If the file does not exist it
+=item Local config: C<./vid-tag.conf> If the file does not exist it
 will be created, and updated with the latest default settings.
 
 =item Command-line options will override all other settings.
@@ -136,8 +149,8 @@ will be created, and updated with the latest default settings.
 =back
 
 After all the values are set, the results are saved to
-B<./vid-tag.conf> so the next run needs only needs the -e option and
-the file list.
+C<./vid-tag.conf> so the next run will only need the -e option and the
+file list.
 
 =head2 QUICK START
 
@@ -145,9 +158,7 @@ the file list.
 
 =over 4
 
-=item Download the latest packaged zip file, vid-tag-VER.zip
-
-=item The package can be found at:
+=item Download the latest packaged zip file, C<vid-tag-VER.zip> from
 
     https://moria.whyayh.com/rel/released/software/own/vid-tag/
 
@@ -167,9 +178,10 @@ Just make sure the install dir is in your PATH env. var.
 
 =over 4
 
-=item cd to the directory with your video files. Copy the vid-tag.conf
-file from the install dir. This is optional. If missing a default
-version will be created.
+=item cd to the directory with your video files (or the directory
+where you want ./output/ created).  Copy the vid-tag.conf file from
+the install dir. This is optional. If missing a default version will
+be created.
 
     Run: vid-tag -n -e testevent
 
@@ -177,9 +189,8 @@ version will be created.
 files.
 
 =item You can now edit the vid-tag.conf file, or use the command line
-options to update the file. Mainly you want to change "testevent" to a
-short ID that will be put in your renamed video files. See the -e
-option.
+options to update the file. You want to change "testevent" to a short
+ID that will be put in your renamed video files. See the -e option.
 
 =back
 
@@ -194,12 +205,17 @@ pattern, and the -t option for how you can change the Title pattern.
 you want to see more progress details.
 
 =item After each run, the vid-tag.conf file is updated with any
-changes, and the vid-tag-example.txt file will summarize how the files
-are modified.
+changes, and the C<vid-tag-example.txt> file will summarize how the
+files are modified.
 
 =item Between each run you should probably remove everything in the
-outputs/ directory. Or you can leave the files there and they will be
-skipped from any changes.
+./outputs/ directory. Or you can leave the files there and they will
+be skipped from any changes.
+
+=item Use the -z option if the file time are off by a consistent
+ammount, because you forgot to set the current time with your camera,
+or your camera uses UTC times and you want them adjusted to the local
+time.
 
 =back
 
@@ -210,80 +226,91 @@ skipped from any changes.
 =item B<-e "pEventId">
 
 Short event tag used in file names. It is also the Id used to access
-the specific event details. If the pEventId is not found in
-vid-tag.conf, then it will be added to vid-tag.conf.
-
-Pattern token: B<%e>.  Config key: C<event.tag>. Required: "pEventId"
+the specific event details in the C<./vid-tag.conf> file. If the
+pEventId is not found, then it will be added to C<vid-tag.conf>.
 
 The value will be changed to lower-case and any spaces will be changed
 to '_'
 
+Pattern token: B<%e>.  Config key: C<event.tag>. Required: "pEventId"
+
 =item B<-E "pEventTitle">
 
-Long event name used in the title.  Pattern token: B<%E>.
-Config key: C<event.title>. Default: "Long event description."
+Long event name used in the title.
+
+Pattern token: B<%E>.  Config key: C<event.title>. Default: "Long
+event description."
 
 =item B<-c "pCity">
 
-City name.  Pattern token: B<%c>.  Config key: C<event.city>. Default:
-"city name"
+City name.
+
+Pattern token: B<%c>.  Config key: C<event.city>. Default: "city name"
 
 =item B<-C "pCaption">
 
-Caption / description metadata.  Config key: C<com.caption>. Default:
-"Copyright TERMS"
+Caption / description metadata.
+
+Config key: C<com.caption>. Default: "Copyright TERMS"
 
 =item B<-p "pInitials">
 
-Photographer's initials / short name (no spaces).  Pattern token: B<%p>.
-Config key: C<com.name-short>.
+Photographer's initials / short name (no spaces).
+
+Pattern token: B<%p>.  Config key: C<com.name-short>.
 
 =item B<-P "pName">
 
-Photographer's full name.  Pattern token: B<%P>.
-Config key: C<com.name-long>. Default: First Last
+Photographer's full name.
+
+Pattern token: B<%P>.  Config key: C<com.name-long>. Default: First
+Last
 
 =item B<-R "pCopyright">
 
-Copyright stamp. Config key: C<com.copyright> Default: "Copyright NAME YYYY"
+Copyright stamp.
+
+Config key: C<com.copyright> Default: "Copyright NAME YYYY"
 
 =item B<-f "pFilePattern">
 
-Output file-name pattern.  Config key: C<com.file-pat>. Default:
-C<%d_%e_%p_%f>.
+Output file-name pattern.  Usually you will only use the lowercase
+pattern options, because they should not have any spaces or special
+characters in them.
+
+Config key: C<com.file-pat>. Default: C<%d_%e_%p_%f>.
 
 =item B<-t "pTitlePattern">
 
-Title pattern. Config key: C<com.title-pat>. Default: C<%D, %c, %E, by %P.>
+Title pattern.  Usually you will use the uppercase pattern options,
+but the lowercase options can be used.
+
+Config key: C<com.title-pat>. Default: C<%D, %c, %E, by %P.>
 
 =item B<-k "pKeyword">
 
-Comma-separated keyword list.  Config key: C<event.keyword>. Default:
-"PBP, event"
+Comma-separated keyword list.
+
+Config key: C<event.keyword>. Default: "PBP, event"
 
 =item B<-z "pTimeZone">
 
-The TimeZone in which the input video files' B<CreateDate> values
-were recorded.  When set to a value other than C<local> (or empty),
-each file's CreateDate is converted from B<pTimeZone> to the host's
-local time before it is used for the output filename, the title's
-date tokens (B<%d>, B<%D>, B<%T>), the example file's "Create Date"
-display, and the filesystem mtime applied via C<touch>.
+Config key: C<event.time-zone>.  Default: C<local> (no conversion).
 
-The on-disk exif B<Create Date> in the output file is left unchanged
-- only what vid-tag derives from it is shifted.
+When set to a value other than C<local> (or empty),
+each file's CreateDate is converted from B<pTimeZone> to the host's
+local time before it is used for the output filename, and all the
+other EXIF time settings.
 
 Pattern: C<UTC[+-]H> or C<UTC[+-]H:MM>.  The C<UTC> prefix is
-case-insensitive (C<utc-1> is accepted).  POSIX TZ sign semantics
-apply, so C<utc-1> represents a zone one hour B<ahead> of UTC.
-
-Config key: C<event.time-zone>.  Default: C<local> (no conversion).
+case-insensitive (C<utc-1> is accepted).
 
 Examples:
 
-    -z utc-1     # zone 1 hour ahead of UTC (e.g. CET in winter)
+    -z utc-1     # zone 1 hour ahead of UTC
     -z UTC+8     # zone 8 hours behind UTC
-    -z UTC-5:30  # zone 5h30m ahead of UTC (e.g. IST)
+    -z UTC-5:30  # zone 5h30m ahead of UTC
+    -z utc-8:03  # your PST time was off be 3 min.
     -z local     # explicit "no conversion"
 
 =item B<-n>
@@ -294,7 +321,7 @@ metadata.
 
 =item B<-h>
 
-Output this "long" usage help.  Same as C<-H long>.
+Output this "long" usage help.  This is the same as C<-H long>.
 
 =item B<-H pStyle>
 
@@ -305,14 +332,18 @@ Output usage in a specific style:
     man         - man page
     html        - HTML page
     md          - Markdown
+    
+    int         - Output internal documentation as text.
+    int-html    - Output internal documentation as html.
+    int-md      - Output internal documentation as markdown.
 
 =item B<-v>
 
 Verbose output.  Repeat for more detail (B<-vv>).
 
-    (default) - warning and above
-    -v        - notice and above
-    -vv       - info and above
+    (default) - warnings and errors only
+    -v        - notice, warnings, and errors
+    -vv       - info, notice, warnings, and errors
 
 =item B<-V>
 
@@ -321,8 +352,9 @@ Output the script's version.
 =item B<-d>
 
 Debug level. Default: 0
-Each -d increments the debug level. Log messages will be print
-if the debug level is greater than the log message's debug level.
+
+Each -d increments the debug level. Debug messages will be printed
+if the debug level is greater than the debug message's debug level.
 
 =back
 
@@ -366,15 +398,7 @@ will be appended to that file's EXIF Title.  Files without a matching
 key are unaffected.
 
 The append rule: a single space follows the title's trailing '.', then
-the section value, then a closing '.'.  Example: with title
-"S<2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel.>" and
-B<extra> entry "Service fragment", the resulting Title is
-"S<2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel. Service fragment.>".
-
-The B<extra> keys typically contain '.' (e.g. "MVI_0107.MP4"), which
-B<git config> cannot parse.  For this reason, the section is read and
-written by an internal awk-based parser; it round-trips through
-C<vid-tag.conf> unchanged on every run.  Edit it by hand.
+the "extra" text, then a closing '.'.
 
 time-zone - is optional.  Omit (or set to C<local>) to disable the
 CreateDate timezone conversion.  See the B<-z> option for the format
@@ -500,7 +524,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3
+cVer=1.3.1
 
 =cut
 
@@ -512,11 +536,11 @@ EOF
 
 =internal-head1 vid-tag Internal Documentation
 
-=internal-head3 fUsage pStyle
+=internal-head2 fUsage pStyle
 
 Select the type of help output. See -h and -H options.
 
-=internal-head2 CONFIG KEY TO VARIABLE MAP
+=internal-head3 Config Key to Variable Map
 
 These are internal variables.
 
@@ -535,6 +559,13 @@ These are internal variables.
     event.title       gpEventTitle
     extra.<FILE>      gExtraMap[<FILE>]   (per-file title append)
 
+=internal-head3 Extra Processing
+
+The B<extra> keys typically contain '.' (e.g. "MVI_0107.MP4"), which
+B<git config> cannot parse.  For this reason, the section is read and
+written by an internal awk-based parser; it round-trips through
+C<vid-tag.conf> unchanged on every run.  Edit it by hand.
+
 =internal-cut
 
 EOF
@@ -550,7 +581,7 @@ fCleanUp() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fCleanUp
+=internal-head2 fCleanUp
 
 Calls fComCleanUp to remove temp files and exit cleanly.
 
@@ -626,7 +657,7 @@ fSetGlobals() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fSetGlobals
+=internal-head2 fSetGlobals
 
 Calls fComSetGlobals, then sets all script-specific globals.
 
@@ -682,7 +713,7 @@ fLoadConf() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fLoadLocalConf
+=internal-head2 fLoadLocalConf
 
 Reads the local config file (gpConfLocal, default ./vid-tag.conf) using
 fComGetConfig -l.  The section prefix is the current gpEventId value.
@@ -725,7 +756,7 @@ fSaveConf() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fSaveLocalConf
+=internal-head2 fSaveLocalConf
 
 Writes the current effective values of all gp* config variables to the
 local config file (gpConfLocal) under the [$gpEventId ...] sections,
@@ -803,7 +834,7 @@ fLoadExtras() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fLoadExtras
+=internal-head2 fLoadExtras
 
 Read the [vid-tag "extra"] section from gpConfLocal into the
 gExtraMap associative array.  Each "FILENAME = text" line becomes
@@ -858,7 +889,7 @@ fSaveExtras() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fSaveExtras
+=internal-head2 fSaveExtras
 
 Append the saved gExtraSection (captured by fLoadExtras) back to
 gpConfLocal.  Called once at the end of the script run, after
@@ -926,7 +957,7 @@ fPreScanOpts() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fPreScanOpts
+=internal-head2 fPreScanOpts
 
 Scans command-line arguments for -e and -s before the config files are
 loaded.  This ensures that fLoadLocalConf uses the correct event tag
@@ -1025,7 +1056,7 @@ fValidate() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fValidate
+=internal-head2 fValidate
 
 Verify that at least one input file was given and that every file in
 gpEventFileList exists on disk.  Calls fError (fatal) on the first
@@ -1084,7 +1115,7 @@ fConvertTimeZone() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fConvertTimeZone "YYYY:MM:DD HH:MM:SS"
+=internal-head2 fConvertTimeZone "YYYY:MM:DD HH:MM:SS"
 
 Convert the timestamp in pRaw from gpTimeZone to local time and echo it
 in the same exiftool format.
@@ -1124,7 +1155,7 @@ fConvertDate() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fConvertDate "YYYY:MM:DD HH:MM:SS"
+=internal-head2 fConvertDate "YYYY:MM:DD HH:MM:SS"
 
 Converts the exiftool CreateDate string into four gFileDate* globals:
 
@@ -1157,7 +1188,7 @@ fReadFileDate() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fReadFileDate pFile
+=internal-head2 fReadFileDate pFile
 
 Read the CreateDate metadata from pFile using exiftool and call
 fConvertDate to populate the gFileDate* globals.
@@ -1196,7 +1227,7 @@ fApplyPattern() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fApplyPattern pPattern pFile
+=internal-head2 fApplyPattern pPattern pFile
 
 Expand %-tokens within pPattern using the current gFileDate* and gp*
 globals.  The expanded string is echoed to stdout.
@@ -1244,7 +1275,7 @@ fCreateOutputDir() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fCreateOutputDir
+=internal-head2 fCreateOutputDir
 
 Creates cOutputDir (default: ./output/) if absent, then hard-links each
 file in gpEventFileList into it.
@@ -1285,7 +1316,7 @@ fExampleCollect() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fExampleCollect pBase pCreateDate
+=internal-head2 fExampleCollect pBase pCreateDate
 
 Append one record (original name, new name, title, CreateDate) to the
 gExample* arrays and bump gExampleIdx.
@@ -1377,7 +1408,7 @@ fExampleCollectSplit() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fExampleCollectSplit pBase pFile pCreateDate
+=internal-head2 fExampleCollectSplit pBase pFile pCreateDate
 
 If pFile is longer than 10 minutes, append one gExample* record per
 10-min segment that fProcessFile would create.  Part names use the
@@ -1482,7 +1513,7 @@ fExample() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fExample
+=internal-head2 fExample
 
 Build B<vid-tag-example.txt> in the current directory.  The file shows:
 
@@ -1552,7 +1583,7 @@ fAddMin() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fAddMin "pTimestamp" pMinutes
+=internal-head2 fAddMin "pTimestamp" pMinutes
 
 Add pMinutes to a timestamp and echo the result in exiftool format
 "YYYY:MM:DD HH:MM:SS".
@@ -1715,7 +1746,7 @@ fProcessFile() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fProcessFile pFile
+=internal-head2 fProcessFile pFile
 
 Process a single video file that has already been hard-linked into
 cOutputDir.  Must be called with the working directory set to cOutputDir.

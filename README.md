@@ -10,7 +10,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 First run. Create config file: ./vid-tag.conf
 
-    vid-tag -n -e "pEventId"
+    vid-tag -n -e "pEventId" [File1 File2 ...]
 
 Edit config files, and/or use these options to override config file.
 
@@ -24,42 +24,45 @@ Edit config files, and/or use these options to override config file.
 # DESCRIPTION
 
 vid-tag renames one or more video files and writes Title, Caption, and
-Keywords metadata using **exiftool**.  The file's **Create Date** metadata
-is read and used to date-stamp the output file name, the output title,
-and the file-system mtime.
+Keywords metadata using the `exiftool`.  The file's `Create Date`
+metadata is read and used to date-stamp the output file name, the
+output title, and the file-system mtime.
 
-An example file, ./vid-tag-example.txt, will be created to show the
-changes to the file with the current settings. This is best used with
-the -n option and include all the files, so the time stamps will match
-what is in the files.
+Files are copied to the ./output/ directory, so the original files are
+not changed in any way.
 
-Files are copied to the ./output/ directory, so original files are
-not touched.
-
-Files (in ./output/) will be renamed using fFilePattern and the exif
-values will be added.
+Files (in ./output/) will be renamed using the pFilePattern and the
+EXIF values will be added to the renamed files
 
 Large files, greater than 10 min, will be split into multiple 10 min
 parts (because some hosting sites do not allow "large" files). The
 exif time stamps for the split files will update for each 10 min part.
 
-Defaults are read in this order (each layer overrides the previous):
+An example file, `./vid-tag-example.txt`, will be created to show the
+changes that are (or will be) made to the files with the current
+settings. This is best used with the -n option and if you include all the
+files, the time stamps will match what is in the files.
+
+If the timestamps for the files are "off" by a consistent amount
+the time-zone (-z) config option can be used to adjust the times.
+
+The config options are read in this order (each layer overrides the
+previous):
 
 - Built-in script defaults.
-- Local config: **./vid-tag.conf** If the file does not exist it
+- Local config: `./vid-tag.conf` If the file does not exist it
 will be created, and updated with the latest default settings.
 - Command-line options will override all other settings.
 
 After all the values are set, the results are saved to
-**./vid-tag.conf** so the next run needs only needs the -e option and
-the file list.
+`./vid-tag.conf` so the next run will only need the -e option and the
+file list.
 
 ## QUICK START
 
 ### Install
 
-- Download the latest packaged zip file, vid-tag-VER.zip
-- The package can be found at:
+- Download the latest packaged zip file, `vid-tag-VER.zip` from
 
         https://moria.whyayh.com/rel/released/software/own/vid-tag/
 
@@ -75,18 +78,18 @@ the file list.
 
 ### First run of vid-tag
 
-- cd to the directory with your video files. Copy the vid-tag.conf
-file from the install dir. This is optional. If missing a default
-version will be created.
+- cd to the directory with your video files (or the directory
+where you want ./output/ created).  Copy the vid-tag.conf file from
+the install dir. This is optional. If missing a default version will
+be created.
 
         Run: vid-tag -n -e testevent
 
 - That will create or update ./vid-tag.conf and vid-tag-example.txt
 files.
 - You can now edit the vid-tag.conf file, or use the command line
-options to update the file. Mainly you want to change "testevent" to a
-short ID that will be put in your renamed video files. See the -e
-option.
+options to update the file. You want to change "testevent" to a short
+ID that will be put in your renamed video files. See the -e option.
 
 ### Tips
 
@@ -95,91 +98,106 @@ pattern, and the -t option for how you can change the Title pattern.
 - Use the -v option to see some progress information. Use -vv if
 you want to see more progress details.
 - After each run, the vid-tag.conf file is updated with any
-changes, and the vid-tag-example.txt file will summarize how the files
-are modified.
+changes, and the `vid-tag-example.txt` file will summarize how the
+files are modified.
 - Between each run you should probably remove everything in the
-outputs/ directory. Or you can leave the files there and they will be
-skipped from any changes.
+./outputs/ directory. Or you can leave the files there and they will
+be skipped from any changes.
+- Use the -z option if the file time are off by a consistent
+ammount, because you forgot to set the current time with your camera,
+or your camera uses UTC times and you want them adjusted to the local
+time.
 
 # OPTIONS
 
 - **-e "pEventId"**
 
     Short event tag used in file names. It is also the Id used to access
-    the specific event details. If the pEventId is not found in
-    vid-tag.conf, then it will be added to vid-tag.conf.
-
-    Pattern token: **%e**.  Config key: `event.tag`. Required: "pEventId"
+    the specific event details in the `./vid-tag.conf` file. If the
+    pEventId is not found, then it will be added to `vid-tag.conf`.
 
     The value will be changed to lower-case and any spaces will be changed
     to '\_'
 
+    Pattern token: **%e**.  Config key: `event.tag`. Required: "pEventId"
+
 - **-E "pEventTitle"**
 
-    Long event name used in the title.  Pattern token: **%E**.
-    Config key: `event.title`. Default: "Long event description."
+    Long event name used in the title.
+
+    Pattern token: **%E**.  Config key: `event.title`. Default: "Long
+    event description."
 
 - **-c "pCity"**
 
-    City name.  Pattern token: **%c**.  Config key: `event.city`. Default:
-    "city name"
+    City name.
+
+    Pattern token: **%c**.  Config key: `event.city`. Default: "city name"
 
 - **-C "pCaption"**
 
-    Caption / description metadata.  Config key: `com.caption`. Default:
-    "Copyright TERMS"
+    Caption / description metadata.
+
+    Config key: `com.caption`. Default: "Copyright TERMS"
 
 - **-p "pInitials"**
 
-    Photographer's initials / short name (no spaces).  Pattern token: **%p**.
-    Config key: `com.name-short`.
+    Photographer's initials / short name (no spaces).
+
+    Pattern token: **%p**.  Config key: `com.name-short`.
 
 - **-P "pName"**
 
-    Photographer's full name.  Pattern token: **%P**.
-    Config key: `com.name-long`. Default: First Last
+    Photographer's full name.
+
+    Pattern token: **%P**.  Config key: `com.name-long`. Default: First
+    Last
 
 - **-R "pCopyright"**
 
-    Copyright stamp. Config key: `com.copyright` Default: "Copyright NAME YYYY"
+    Copyright stamp.
+
+    Config key: `com.copyright` Default: "Copyright NAME YYYY"
 
 - **-f "pFilePattern"**
 
-    Output file-name pattern.  Config key: `com.file-pat`. Default:
-    `%d_%e_%p_%f`.
+    Output file-name pattern.  Usually you will only use the lowercase
+    pattern options, because they should not have any spaces or special
+    characters in them.
+
+    Config key: `com.file-pat`. Default: `%d_%e_%p_%f`.
 
 - **-t "pTitlePattern"**
 
-    Title pattern. Config key: `com.title-pat`. Default: `%D, %c, %E, by %P.`
+    Title pattern.  Usually you will use the uppercase pattern options,
+    but the lowercase options can be used.
+
+    Config key: `com.title-pat`. Default: `%D, %c, %E, by %P.`
 
 - **-k "pKeyword"**
 
-    Comma-separated keyword list.  Config key: `event.keyword`. Default:
-    "PBP, event"
+    Comma-separated keyword list.
+
+    Config key: `event.keyword`. Default: "PBP, event"
 
 - **-z "pTimeZone"**
 
-    The TimeZone in which the input video files' **CreateDate** values
-    were recorded.  When set to a value other than `local` (or empty),
-    each file's CreateDate is converted from **pTimeZone** to the host's
-    local time before it is used for the output filename, the title's
-    date tokens (**%d**, **%D**, **%T**), the example file's "Create Date"
-    display, and the filesystem mtime applied via `touch`.
+    Config key: `event.time-zone`.  Default: `local` (no conversion).
 
-    The on-disk exif **Create Date** in the output file is left unchanged
-    \- only what vid-tag derives from it is shifted.
+    When set to a value other than `local` (or empty),
+    each file's CreateDate is converted from **pTimeZone** to the host's
+    local time before it is used for the output filename, and all the
+    other EXIF time settings.
 
     Pattern: `UTC[+-]H` or `UTC[+-]H:MM`.  The `UTC` prefix is
-    case-insensitive (`utc-1` is accepted).  POSIX TZ sign semantics
-    apply, so `utc-1` represents a zone one hour **ahead** of UTC.
-
-    Config key: `event.time-zone`.  Default: `local` (no conversion).
+    case-insensitive (`utc-1` is accepted).
 
     Examples:
 
-        -z utc-1     # zone 1 hour ahead of UTC (e.g. CET in winter)
+        -z utc-1     # zone 1 hour ahead of UTC
         -z UTC+8     # zone 8 hours behind UTC
-        -z UTC-5:30  # zone 5h30m ahead of UTC (e.g. IST)
+        -z UTC-5:30  # zone 5h30m ahead of UTC
+        -z utc-8:03  # your PST time was off be 3 min.
         -z local     # explicit "no conversion"
 
 - **-n**
@@ -190,7 +208,7 @@ skipped from any changes.
 
 - **-h**
 
-    Output this "long" usage help.  Same as `-H long`.
+    Output this "long" usage help.  This is the same as `-H long`.
 
 - **-H pStyle**
 
@@ -201,14 +219,18 @@ skipped from any changes.
         man         - man page
         html        - HTML page
         md          - Markdown
+        
+        int         - Output internal documentation as text.
+        int-html    - Output internal documentation as html.
+        int-md      - Output internal documentation as markdown.
 
 - **-v**
 
     Verbose output.  Repeat for more detail (**-vv**).
 
-        (default) - warning and above
-        -v        - notice and above
-        -vv       - info and above
+        (default) - warnings and errors only
+        -v        - notice, warnings, and errors
+        -vv       - info, notice, warnings, and errors
 
 - **-V**
 
@@ -217,8 +239,9 @@ skipped from any changes.
 - **-d**
 
     Debug level. Default: 0
-    Each -d increments the debug level. Log messages will be print
-    if the debug level is greater than the log message's debug level.
+
+    Each -d increments the debug level. Debug messages will be printed
+    if the debug level is greater than the debug message's debug level.
 
 ## Pattern Tokens
 
@@ -260,15 +283,7 @@ will be appended to that file's EXIF Title.  Files without a matching
 key are unaffected.
 
 The append rule: a single space follows the title's trailing '.', then
-the section value, then a closing '.'.  Example: with title
-"2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel." and
-**extra** entry "Service fragment", the resulting Title is
-"2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel. Service fragment.".
-
-The **extra** keys typically contain '.' (e.g. "MVI\_0107.MP4"), which
-**git config** cannot parse.  For this reason, the section is read and
-written by an internal awk-based parser; it round-trips through
-`vid-tag.conf` unchanged on every run.  Edit it by hand.
+the "extra" text, then a closing '.'.
 
 time-zone - is optional.  Omit (or set to `local`) to disable the
 CreateDate timezone conversion.  See the **-z** option for the format

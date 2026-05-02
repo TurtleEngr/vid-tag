@@ -3,7 +3,7 @@
 # $Revision: 1.10 $ $Date: 2026/04/29 18:27:22 $ GMT
 set -u
 
-export cVer=1.3
+export cVer=1.3.1
 
 # --------------------------------
 fUsageTest() {
@@ -70,9 +70,9 @@ Run the unit test functions in this script.
 
 "B<-T all>" runs all functions that begin with "test".
 
-"B<-T fast>" runs all functions that do not have Slow in their name".
+"B<-T fast>" runs all functions that do not have "Slow" in their name (~10sec)".
 
-"B<-T cli>" runs all functions that begin with "testCli".
+"B<-T cli>" runs all functions that begin with "testCli (~6min)".
 
 "B<-T not-cli>" runs all functions that begin with "test", but not
 "testCli".
@@ -117,7 +117,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-cVer=1.3
+cVer=1.3.1
 
 =cut
 EOF
@@ -2529,7 +2529,7 @@ fRunTests() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fRunTests
+=internal-head2 fRunTests
 
 Run unit tests for this script using shunit2.1.
 

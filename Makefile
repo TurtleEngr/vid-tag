@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 1.3
+cVer = 1.3.1
 
 # --------------------
 # Main targets

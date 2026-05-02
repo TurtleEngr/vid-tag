@@ -18,6 +18,7 @@ Edit config files, and/or use these options to override config file.
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
         [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
         [-f "pFilePattern"] [-t "pTitlePattern"] [-x "pExtra"]
+        [-z "pTimeZone"]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
 # DESCRIPTION
@@ -163,6 +164,31 @@ skipped from any changes.
 
     When setting, include a leading space and an ending '.'
 
+- **-z "pTimeZone"**
+
+    The TimeZone in which the input video files' **CreateDate** values
+    were recorded.  When set to a value other than `local` (or empty),
+    each file's CreateDate is converted from **pTimeZone** to the host's
+    local time before it is used for the output filename, the title's
+    date tokens (**%d**, **%D**, **%T**), the example file's "Create Date"
+    display, and the filesystem mtime applied via `touch`.
+
+    The on-disk exif **Create Date** in the output file is left unchanged
+    \- only what vid-tag derives from it is shifted.
+
+    Pattern: `UTC[+-]H` or `UTC[+-]H:MM`.  The `UTC` prefix is
+    case-insensitive (`utc-1` is accepted).  POSIX TZ sign semantics
+    apply, so `utc-1` represents a zone one hour **ahead** of UTC.
+
+    Config key: `event.time-zone`.  Default: `local` (no conversion).
+
+    Examples:
+
+        -z utc-1     # zone 1 hour ahead of UTC (e.g. CET in winter)
+        -z UTC+8     # zone 8 hours behind UTC
+        -z UTC-5:30  # zone 5h30m ahead of UTC (e.g. IST)
+        -z local     # explicit "no conversion"
+
 - **-n**
 
     No-execute / dry-run.  Validate inputs and create config file
@@ -231,8 +257,13 @@ The value of `$gpEventId` is the primary key.
         city       = pCity
         keyword    = word, word (pKeyword)
         extra      = Second sentence for title. (pExtra) - optional
+        time-zone  = UTC[+-]H[:MM] | local (pTimeZone) - optional
 
 extra - is optional, but if defined, it must end with a '.'
+
+time-zone - is optional.  Omit (or set to `local`) to disable the
+CreateDate timezone conversion.  See the **-z** option for the format
+and semantics.
 
 # RETURN VALUE
 

@@ -1,6 +1,6 @@
 set -u
 
-export cVer=1.2.3
+export cVer=1.3
 export cBin
 export cExampleFile
 export cOutputDir
@@ -28,6 +28,7 @@ export gpFilePat
 export gpNameLong
 export gpNameShort
 export gpNoExec
+export gpTimeZone
 export gpTitlePat
 
 # Captured command line for the example file.  Set in vid-tag main.
@@ -87,6 +88,7 @@ Edit config files, and/or use these options to override config file.
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
         [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
         [-f "pFilePattern"] [-t "pTitlePattern"] [-x "pExtra"]
+        [-z "pTimeZone"]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
 =head1 DESCRIPTION
@@ -257,6 +259,31 @@ Config key: C<event.extra>.
 
 When setting, include a leading space and an ending '.'
 
+=item B<-z "pTimeZone">
+
+The TimeZone in which the input video files' B<CreateDate> values
+were recorded.  When set to a value other than C<local> (or empty),
+each file's CreateDate is converted from B<pTimeZone> to the host's
+local time before it is used for the output filename, the title's
+date tokens (B<%d>, B<%D>, B<%T>), the example file's "Create Date"
+display, and the filesystem mtime applied via C<touch>.
+
+The on-disk exif B<Create Date> in the output file is left unchanged
+- only what vid-tag derives from it is shifted.
+
+Pattern: C<UTC[+-]H> or C<UTC[+-]H:MM>.  The C<UTC> prefix is
+case-insensitive (C<utc-1> is accepted).  POSIX TZ sign semantics
+apply, so C<utc-1> represents a zone one hour B<ahead> of UTC.
+
+Config key: C<event.time-zone>.  Default: C<local> (no conversion).
+
+Examples:
+
+    -z utc-1     # zone 1 hour ahead of UTC (e.g. CET in winter)
+    -z UTC+8     # zone 8 hours behind UTC
+    -z UTC-5:30  # zone 5h30m ahead of UTC (e.g. IST)
+    -z local     # explicit "no conversion"
+
 =item B<-n>
 
 No-execute / dry-run.  Validate inputs and create config file
@@ -327,8 +354,13 @@ The value of C<$gpEventId> is the primary key.
         city       = pCity
         keyword    = word, word (pKeyword)
         extra      = Second sentence for title. (pExtra) - optional
+        time-zone  = UTC[+-]H[:MM] | local (pTimeZone) - optional
 
 extra - is optional, but if defined, it must end with a '.'
+
+time-zone - is optional.  Omit (or set to C<local>) to disable the
+CreateDate timezone conversion.  See the B<-z> option for the format
+and semantics.
 
 =head1 RETURN VALUE
 
@@ -450,7 +482,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.2.3
+cVer=1.3
 
 =cut
 
@@ -483,6 +515,7 @@ These are internal variables.
     event.extra       gpEventExtra
     event.file-list   gpEventFileList
     event.keyword     gpEventKeyword
+    event.time-zone   gpTimeZone
     event.title       gpEventTitle
 
 =internal-cut
@@ -540,6 +573,7 @@ fSetGlobals() {
     gpFilePat=${gpFilePat:-'%d_%e_%p_%f'}
     gpNameLong=${gpNameLong:-"TBD"}
     gpNameShort=${gpNameShort:-"TBD"}
+    gpTimeZone=${gpTimeZone:-""}
     gpTitlePat=${gpTitlePat:-'%D, %c, %E, by %P.'}
 
     # -------------------
@@ -619,6 +653,7 @@ fLoadConf() {
     gpEventCity=$(    fComGetConfig -l -k "$cName.$gpEventId.city"      -d "$gpEventCity")
     gpEventKeyword=$( fComGetConfig -l -k "$cName.$gpEventId.keyword"   -d "$gpEventKeyword")
     gpEventFileList=$(fComGetConfig -l -k "$cName.$gpEventId.file-list" -d "$gpEventFileList")
+    gpTimeZone=$(     fComGetConfig -l -k "$cName.$gpEventId.time-zone" -d "$gpTimeZone")
 
     gpEventId="${gpEventId// /_}"
     return 0
@@ -665,6 +700,9 @@ fSaveConf() {
     fi
     if [[ -n "$gpEventExtra" ]]; then
        fComSetConfig -l -k "$cName.$gpEventId.extra"     -v "$gpEventExtra"
+    fi
+    if [[ -n "$gpTimeZone" ]]; then
+       fComSetConfig -l -k "$cName.$gpEventId.time-zone" -v "$gpTimeZone"
     fi
 
     return 0
@@ -757,7 +795,7 @@ fGetOpt() {
     local OPTARG
     local tArg
 
-    while getopts :c:C:e:E:f:k:np:P:R:t:x:hH:vVd tArg; do
+    while getopts :c:C:e:E:f:k:np:P:R:t:x:z:hH:vVd tArg; do
         case $tArg in
             # Script arguments
             c) gpEventCity="$OPTARG" ;;
@@ -772,6 +810,7 @@ fGetOpt() {
             R) gpCopyright="$OPTARG" ;;
             t) gpTitlePat="$OPTARG" ;;
             x) gpEventExtra="$OPTARG" ;;
+            z) gpTimeZone="$OPTARG" ;;
             # Common arguments
             h) fUsage long ;;
             H) fUsage "$OPTARG" ;;
@@ -810,6 +849,14 @@ fValidate() {
         fError -m "-t pTitlePat is missing % options" -l $LINENO
     fi
 
+    # TimeZone format check.  Empty or "local" means no conversion.
+    # Valid format: "UTC[+-]H[:MM]" (case-insensitive on UTC).
+    if [[ -n "$gpTimeZone" && "$gpTimeZone" != "local" ]]; then
+        if [[ ! "$gpTimeZone" =~ ^[Uu][Tt][Cc][+-][0-9]{1,2}(:[0-9]{2})?$ ]]; then
+            fError -m "Invalid TimeZone: $gpTimeZone (expected UTC[+-]H[:MM] or 'local')" -l $LINENO
+        fi
+    fi
+
     if [[ $gpNoExec -ne 0 ]]; then
         # Don't check the files
         return 0
@@ -839,6 +886,73 @@ missing file.
 =internal-cut
 EOF
 } # fValidate
+
+# --------------------------------
+fConvertTimeZone() {
+    # Given an exiftool date string "YYYY:MM:DD HH:MM:SS", return the
+    # same string converted from gpTimeZone to local time.
+    #
+    # When gpTimeZone is empty or "local", the input is echoed back
+    # unchanged - the caller does not need to special-case the no-op.
+    #
+    # The 'date' command's "TZ=..." date-string prefix is used so that
+    # POSIX TZ semantics apply: e.g. gpTimeZone="utc-1" represents a
+    # zone 1 hour AHEAD of UTC (just as TZ="UTC-1" does in the env).
+    # The output is in the host's local time, in exiftool's format.
+    local pRaw="$1"
+    
+    local tDate
+    local tFixed
+    local tTime
+
+    if [[ -z "$gpTimeZone" || "$gpTimeZone" = "local" ]]; then
+        echo "$pRaw"
+        return 0
+    fi
+
+    # Defensive validation - fValidate already enforces this on user
+    # inputs but this function may be called directly from tests.
+    if [[ ! "$gpTimeZone" =~ ^[Uu][Tt][Cc][+-][0-9]{1,2}(:[0-9]{2})?$ ]]; then
+        fError -m "Invalid TimeZone: $gpTimeZone (expected UTC[+-]H[:MM] or 'local')" -l $LINENO
+        return 1
+    fi
+
+    # Split exiftool format "YYYY:MM:DD HH:MM:SS" into date + time.
+    tDate="${pRaw%% *}"
+    tTime="${pRaw##* }"
+    # date(1) accepts "YYYY-MM-DD" but not "YYYY:MM:DD" for the date.
+    tDate="${tDate//:/-}"
+
+    tFixed=$('date' --date="TZ=\"$gpTimeZone\" $tDate $tTime" \
+                    +'%Y:%m:%d %H:%M:%S' 2>/dev/null)
+    if [[ -z "$tFixed" ]]; then
+        fError -m "Failed to convert: '$pRaw' from TimeZone=$gpTimeZone" -l $LINENO
+        return 1
+    fi
+    echo "$tFixed"
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fConvertTimeZone "YYYY:MM:DD HH:MM:SS"
+
+Convert the timestamp in pRaw from gpTimeZone to local time and echo it
+in the same exiftool format.
+
+If gpTimeZone is empty or "local", pRaw is echoed unchanged.
+
+gpTimeZone must be in the form "UTC[+-]H" or "UTC[+-]H:MM" (case-
+insensitive on the "UTC" prefix).  POSIX TZ sign semantics apply:
+"UTC-1" means a zone one hour AHEAD of UTC, so a file CreateDate of
+"2026:05:02 01:00:00" with gpTimeZone="utc-1" converts to
+"2026:05:02 00:00:00" UTC, which on a host in PDT (UTC-7) becomes
+"2026:05:01 17:00:00".
+
+=internal-cut
+EOF
+} # fConvertTimeZone
 
 # --------------------------------
 fConvertDate() {
@@ -886,6 +1000,8 @@ fReadFileDate() {
             -m "No CreateDate in $pFile; using file mtime." -l $LINENO
         gFileDate=$('date' -r "$pFile" +"%Y:%m:%d %H:%M:%S")
     fi
+    # Apply gpTimeZone conversion (no-op when gpTimeZone is empty or "local").
+    gFileDate=$(fConvertTimeZone "$gFileDate")
     fConvertDate "$gFileDate"
     return 0
 

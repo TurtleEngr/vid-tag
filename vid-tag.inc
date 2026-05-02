@@ -96,7 +96,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 =head1 SYNOPSIS
 
-First run. Create config file: ./vid-tag.conf
+First run. Create config file: F<./vid-tag.conf>
 
     vid-tag -n -e "pEventId" [File1 File2 ...]
 
@@ -126,7 +126,7 @@ Large files, greater than 10 min, will be split into multiple 10 min
 parts (because some hosting sites do not allow "large" files). The
 exif time stamps for the split files will update for each 10 min part.
 
-An example file, C<./vid-tag-example.txt>, will be created to show the
+An example file, F<./vid-tag-example.txt>, will be created to show the
 changes that are (or will be) made to the files with the current
 settings. This is best used with the -n option and if you include all the
 files, the time stamps will match what is in the files.
@@ -141,7 +141,7 @@ previous):
 
 =item Built-in script defaults.
 
-=item Local config: C<./vid-tag.conf> If the file does not exist it
+=item Local config: F<./vid-tag.conf> If the file does not exist it
 will be created, and updated with the latest default settings.
 
 =item Command-line options will override all other settings.
@@ -149,7 +149,7 @@ will be created, and updated with the latest default settings.
 =back
 
 After all the values are set, the results are saved to
-C<./vid-tag.conf> so the next run will only need the -e option and the
+F<./vid-tag.conf> so the next run will only need the -e option and the
 file list.
 
 =head2 QUICK START
@@ -179,16 +179,16 @@ Just make sure the install dir is in your PATH env. var.
 =over 4
 
 =item cd to the directory with your video files (or the directory
-where you want ./output/ created).  Copy the vid-tag.conf file from
+where you want ./output/ created).  Copy the F<vid-tag.conf> file from
 the install dir. This is optional. If missing a default version will
 be created.
 
     Run: vid-tag -n -e testevent
 
-=item That will create or update ./vid-tag.conf and vid-tag-example.txt
-files.
+=item That will create or update F<./vid-tag.conf> and
+F<vid-tag-example.txt> files.
 
-=item You can now edit the vid-tag.conf file, or use the command line
+=item You can now edit the F<vid-tag.conf> file, or use the command line
 options to update the file. You want to change "testevent" to a short
 ID that will be put in your renamed video files. See the -e option.
 
@@ -204,8 +204,8 @@ pattern, and the -t option for how you can change the Title pattern.
 =item Use the -v option to see some progress information. Use -vv if
 you want to see more progress details.
 
-=item After each run, the vid-tag.conf file is updated with any
-changes, and the C<vid-tag-example.txt> file will summarize how the
+=item After each run, the F<vid-tag.conf> file is updated with any
+changes, and the F<vid-tag-example.txt> file will summarize how the
 files are modified.
 
 =item Between each run you should probably remove everything in the
@@ -226,8 +226,8 @@ time.
 =item B<-e "pEventId">
 
 Short event tag used in file names. It is also the Id used to access
-the specific event details in the C<./vid-tag.conf> file. If the
-pEventId is not found, then it will be added to C<vid-tag.conf>.
+the specific event details in the F<./vid-tag.conf> file. If the
+pEventId is not found, then it will be added to F<./vid-tag.conf>.
 
 The value will be changed to lower-case and any spaces will be changed
 to '_'
@@ -316,7 +316,7 @@ Examples:
 =item B<-n>
 
 No-execute / dry-run.  Validate inputs and create config file
-B<./vid-tag.conf>, but do not create output/, rename files, or modify
+F<./vid-tag.conf>, but do not create output/, rename files, or modify
 metadata.
 
 =item B<-h>
@@ -564,7 +564,7 @@ These are internal variables.
 The B<extra> keys typically contain '.' (e.g. "MVI_0107.MP4"), which
 B<git config> cannot parse.  For this reason, the section is read and
 written by an internal awk-based parser; it round-trips through
-C<vid-tag.conf> unchanged on every run.  Edit it by hand.
+F<vid-tag.conf> unchanged on every run.  Edit it by hand.
 
 =internal-cut
 
@@ -715,7 +715,7 @@ fLoadConf() {
 
 =internal-head2 fLoadLocalConf
 
-Reads the local config file (gpConfLocal, default ./vid-tag.conf) using
+Reads the local config file (gpConfLocal, default F<./vid-tag.conf>) using
 fComGetConfig -l.  The section prefix is the current gpEventId value.
 
 If the file is absent, or gpEventId is not yet known, the function
@@ -1515,7 +1515,7 @@ fExample() {
 
 =internal-head2 fExample
 
-Build B<vid-tag-example.txt> in the current directory.  The file shows:
+Build F<vid-tag-example.txt> in the current directory.  The file shows:
 
 =internal-over 4
 
@@ -1530,7 +1530,7 @@ that vid-tag will write to each renamed file.
 =internal-back
 
 When gpNoExec is set, a single dummy entry is generated using
-B<FILE.mp4> as the input name and the current wall-clock time as the
+F<FILE.mp4> as the input name and the current wall-clock time as the
 CreateDate, so the user can preview their conf settings before
 supplying real files.  Otherwise each file in gpEventFileList is
 read via fReadFileDate to get its CreateDate.

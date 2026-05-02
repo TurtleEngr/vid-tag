@@ -12,7 +12,7 @@ cVer = 1.2.3
 # --------------------
 # Main targets
 
-usage:
+usage :
 	@echo 'Usage:'
 	@echo 'clean      - remove all backup files'
 	@echo 'dist-clean - remove all built files'
@@ -33,7 +33,7 @@ dist-clean : clean
 	rm MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	rm -rf pkg
 
-update : check-bash-com.inc check-bash-com.test check-shunit2.1
+update check : check-bash-com.inc check-bash-com.test check-shunit2.1
 
 build : README.md
 	for i in vid-tag vid-tag.inc vid-tag.test; do \
@@ -88,13 +88,13 @@ README.html : README.md
 	tidy -m -config ./tidyxhtml.conf $@
 
 check-bash-com.inc : ~/bin/bash-com.inc
-	-diff bash-com.inc $?
+	-diff $? bash-com.inc | grep -v Revision:
 
 check-bash-com.test : ~/bin/bash-com.test
-	-diff bash-com.test $?
+	-diff $? bash-com.test | grep -v Revision:
 
 check-shunit2.1 : ~/bin/shunit2.1
-	-diff shunit2.1 $?
+	-diff $? shunit2.1 | grep -v Revision:
 
 pkg :
 	mkdir -p $@

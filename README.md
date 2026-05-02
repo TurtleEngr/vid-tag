@@ -17,7 +17,7 @@ Edit config files, and/or use these options to override config file.
     vid-tag -e "pEventId" File1 [File2 ...]
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
         [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
-        [-f "pFilePattern"] [-t "pTitlePattern"] [-x "pExtra"]
+        [-f "pFilePattern"] [-t "pTitlePattern"]
         [-z "pTimeZone"]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
@@ -157,13 +157,6 @@ skipped from any changes.
     Comma-separated keyword list.  Config key: `event.keyword`. Default:
     "PBP, event"
 
-- **-x "pExtra"**
-
-    If non-empty, appended to the generated title.
-    Config key: `event.extra`.
-
-    When setting, include a leading space and an ending '.'
-
 - **-z "pTimeZone"**
 
     The TimeZone in which the input video files' **CreateDate** values
@@ -238,7 +231,6 @@ skipped from any changes.
     %f   original file name   (path stripped)
     %p   photographer short   (-p)
     %P   photographer long    (-P)
-    %x   extra title          (-x)
 
 ## Config File Format
 
@@ -256,10 +248,27 @@ The value of `$gpEventId` is the primary key.
         title      = Long Event Title (pEventTitle)
         city       = pCity
         keyword    = word, word (pKeyword)
-        extra      = Second sentence for title. (pExtra) - optional
         time-zone  = UTC[+-]H[:MM] | local (pTimeZone) - optional
+    [vid-tag "extra"]
+        FILE1      = extra title text for FILE1 - optional
+        FILE2      = extra title text for FILE2 - optional
+        ...
 
-extra - is optional, but if defined, it must end with a '.'
+The **\[vid-tag "extra"\]** section is optional.  Each key is the exact
+basename of an input file (case-sensitive); the value is the text that
+will be appended to that file's EXIF Title.  Files without a matching
+key are unaffected.
+
+The append rule: a single space follows the title's trailing '.', then
+the section value, then a closing '.'.  Example: with title
+"2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel." and
+**extra** entry "Service fragment", the resulting Title is
+"2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel. Service fragment.".
+
+The **extra** keys typically contain '.' (e.g. "MVI\_0107.MP4"), which
+**git config** cannot parse.  For this reason, the section is read and
+written by an internal awk-based parser; it round-trips through
+`vid-tag.conf` unchanged on every run.  Edit it by hand.
 
 time-zone - is optional.  Omit (or set to `local`) to disable the
 CreateDate timezone conversion.  See the **-z** option for the format

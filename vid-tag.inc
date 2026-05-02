@@ -20,7 +20,6 @@ export gpConfLocal
 export gpCopyright
 export gpDebug
 export gpEventCity
-export gpEventExtra
 export gpEventFileList
 export gpEventKeyword
 export gpEventTitle
@@ -40,6 +39,16 @@ declare -ag gExampleNewNames
 declare -ag gExampleTitles
 declare -ag gExampleCreateDates
 declare -ig gExampleIdx
+
+# Per-file extra-title map populated by fLoadExtras from the
+# [vid-tag "extra"] section of $gpConfLocal.  Keys are file basenames
+# (exact, case-sensitive); values are the text appended to the EXIF
+# Title for matching files.
+declare -Ag gExtraMap
+# Raw text of the [vid-tag "extra"] block, captured by fLoadExtras
+# and re-emitted by fSaveExtras.  Used to round-trip the section
+# unchanged across git-config based reads/writes.
+export gExtraSection
 
 # ========================================
 # Script Functions
@@ -87,7 +96,7 @@ Edit config files, and/or use these options to override config file.
     vid-tag -e "pEventId" File1 [File2 ...]
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
         [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
-        [-f "pFilePattern"] [-t "pTitlePattern"] [-x "pExtra"]
+        [-f "pFilePattern"] [-t "pTitlePattern"]
         [-z "pTimeZone"]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
@@ -252,13 +261,6 @@ Title pattern. Config key: C<com.title-pat>. Default: C<%D, %c, %E, by %P.>
 Comma-separated keyword list.  Config key: C<event.keyword>. Default:
 "PBP, event"
 
-=item B<-x "pExtra">
-
-If non-empty, appended to the generated title.
-Config key: C<event.extra>.
-
-When setting, include a leading space and an ending '.'
-
 =item B<-z "pTimeZone">
 
 The TimeZone in which the input video files' B<CreateDate> values
@@ -335,7 +337,6 @@ if the debug level is greater than the log message's debug level.
     %f   original file name   (path stripped)
     %p   photographer short   (-p)
     %P   photographer long    (-P)
-    %x   extra title          (-x)
 
 =head2 Config File Format
 
@@ -353,10 +354,27 @@ The value of C<$gpEventId> is the primary key.
         title      = Long Event Title (pEventTitle)
         city       = pCity
         keyword    = word, word (pKeyword)
-        extra      = Second sentence for title. (pExtra) - optional
         time-zone  = UTC[+-]H[:MM] | local (pTimeZone) - optional
+    [vid-tag "extra"]
+        FILE1      = extra title text for FILE1 - optional
+        FILE2      = extra title text for FILE2 - optional
+        ...
 
-extra - is optional, but if defined, it must end with a '.'
+The B<[vid-tag "extra"]> section is optional.  Each key is the exact
+basename of an input file (case-sensitive); the value is the text that
+will be appended to that file's EXIF Title.  Files without a matching
+key are unaffected.
+
+The append rule: a single space follows the title's trailing '.', then
+the section value, then a closing '.'.  Example: with title
+"S<2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel.>" and
+B<extra> entry "Service fragment", the resulting Title is
+"S<2026-03-01 Sun, Redwood City, Service, by Bruce Rafnel. Service fragment.>".
+
+The B<extra> keys typically contain '.' (e.g. "MVI_0107.MP4"), which
+B<git config> cannot parse.  For this reason, the section is read and
+written by an internal awk-based parser; it round-trips through
+C<vid-tag.conf> unchanged on every run.  Edit it by hand.
 
 time-zone - is optional.  Omit (or set to C<local>) to disable the
 CreateDate timezone conversion.  See the B<-z> option for the format
@@ -512,11 +530,10 @@ These are internal variables.
     com.title-pat     gpTitlePat
     event.tag         gpEventId
     event.city        gpEventCity
-    event.extra       gpEventExtra
-    event.file-list   gpEventFileList
     event.keyword     gpEventKeyword
     event.time-zone   gpTimeZone
     event.title       gpEventTitle
+    extra.<FILE>      gExtraMap[<FILE>]   (per-file title append)
 
 =internal-cut
 
@@ -565,7 +582,6 @@ fSetGlobals() {
     gpCaption=${gpCaption:-"Copyright TERMS"}
     gpCopyright=${gpCopyright:-"Copyright NAME YYYY"}
     gpEventCity=${gpEventCity:-"TBD"}
-    gpEventExtra=${gpEventExtra:-""}
     gpEventFileList=${gpEventFileList:-""}
     gpEventKeyword=${gpEventKeyword:-"TBD"}
     gpEventId=${gpEventId:-""}
@@ -593,6 +609,12 @@ fSetGlobals() {
     gExampleTitles=()
     gExampleCreateDates=()
     gExampleIdx=0
+
+    # -------------------
+    # Per-file extras: populated by fLoadExtras, written back by
+    # fSaveExtras.  Map is reset here; section text starts empty.
+    gExtraMap=()
+    gExtraSection=""
 
     # -------------------
     # Required and optional external programs
@@ -649,10 +671,8 @@ fLoadConf() {
     fi
 
     gpEventTitle=$(   fComGetConfig -l -k "$cName.$gpEventId.title"     -d "$gpEventTitle")
-    gpEventExtra=$(   fComGetConfig -l -k "$cName.$gpEventId.extra"     -d "$gpEventExtra")
     gpEventCity=$(    fComGetConfig -l -k "$cName.$gpEventId.city"      -d "$gpEventCity")
     gpEventKeyword=$( fComGetConfig -l -k "$cName.$gpEventId.keyword"   -d "$gpEventKeyword")
-    gpEventFileList=$(fComGetConfig -l -k "$cName.$gpEventId.file-list" -d "$gpEventFileList")
     gpTimeZone=$(     fComGetConfig -l -k "$cName.$gpEventId.time-zone" -d "$gpTimeZone")
 
     gpEventId="${gpEventId// /_}"
@@ -695,12 +715,6 @@ fSaveConf() {
     fComSetConfig -l -k "$cName.$gpEventId.city"      -v "$gpEventCity"
     fComSetConfig -l -k "$cName.$gpEventId.keyword"   -v "$gpEventKeyword"
 
-    if [[ -n "$gpEventFileList" ]]; then
-       fComSetConfig -l -k "$cName.$gpEventId.file-list" -v "$gpEventFileList"
-    fi
-    if [[ -n "$gpEventExtra" ]]; then
-       fComSetConfig -l -k "$cName.$gpEventId.extra"     -v "$gpEventExtra"
-    fi
     if [[ -n "$gpTimeZone" ]]; then
        fComSetConfig -l -k "$cName.$gpEventId.time-zone" -v "$gpTimeZone"
     fi
@@ -722,6 +736,141 @@ Called when -s is present on the command line.
 =internal-cut
 EOF
 } # fSaveConf
+
+# --------------------------------
+fLoadExtras() {
+    # Read the [vid-tag "extra"] section from $gpConfLocal and populate
+    # the gExtraMap associative array (keyed by exact, case-sensitive
+    # file basename).  Also save the raw section text in gExtraSection
+    # and STRIP the section from $gpConfLocal so subsequent git-config
+    # based reads/writes (fComGetConfig / fComSetConfig) don't choke on
+    # keys that contain '.' (e.g. "MVI_0107.MP4").
+    #
+    # Round-trip is completed by fSaveExtras which appends the saved
+    # section back to $gpConfLocal at the end of the run.
+    local tLine tKey tValue tTmp
+
+    gExtraMap=()
+    gExtraSection=""
+
+    if [[ ! -f "$gpConfLocal" ]]; then
+        return 0
+    fi
+
+    # Capture the section text verbatim (header + body lines).
+    gExtraSection=$(awk '
+        /^[[:space:]]*\[[[:space:]]*vid-tag[[:space:]]+"extra"[[:space:]]*\]/ {
+            in_sec=1; print; next
+        }
+        /^[[:space:]]*\[/ { in_sec=0 }
+        in_sec { print }
+    ' "$gpConfLocal")
+
+    if [[ -z "$gExtraSection" ]]; then
+        return 0
+    fi
+
+    # Parse "key = value" lines into the map.  Skip the header,
+    # blank lines, and '#' / ';' comments.
+    while IFS= read -r tLine; do
+        [[ "$tLine" =~ ^[[:space:]]*\[ ]] && continue
+        [[ "$tLine" =~ ^[[:space:]]*$ ]]  && continue
+        [[ "$tLine" =~ ^[[:space:]]*[\#\;] ]] && continue
+        if [[ "$tLine" =~ ^[[:space:]]*([^=[:space:]][^=]*[^=[:space:]]|[^=[:space:]])[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+            tKey="${BASH_REMATCH[1]}"
+            tValue="${BASH_REMATCH[2]}"
+            # Trim trailing whitespace from value
+            tValue="${tValue%"${tValue##*[![:space:]]}"}"
+            gExtraMap["$tKey"]="$tValue"
+        fi
+    done <<< "$gExtraSection"
+
+    # Strip the [vid-tag "extra"] section from the file in place so
+    # the rest of the run can use git config without errors.
+    tTmp="${gpConfLocal}.vt$$"
+    awk '
+        /^[[:space:]]*\[[[:space:]]*vid-tag[[:space:]]+"extra"[[:space:]]*\]/ {
+            in_sec=1; next
+        }
+        /^[[:space:]]*\[/ { in_sec=0 }
+        !in_sec { print }
+    ' "$gpConfLocal" > "$tTmp" && mv "$tTmp" "$gpConfLocal"
+
+    fLog -p info -m "Loaded ${#gExtraMap[@]} extra entries from $gpConfLocal" -l $LINENO
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fLoadExtras
+
+Read the [vid-tag "extra"] section from gpConfLocal into the
+gExtraMap associative array.  Each "FILENAME = text" line becomes
+gExtraMap["FILENAME"]="text".  Match against command-line file
+basenames is exact and case-sensitive.
+
+Side effects:
+
+=internal-over 4
+
+=internal-item gExtraMap is reset and populated.
+
+=internal-item gExtraSection holds the original section text
+(header + body) so fSaveExtras can re-emit it unchanged.
+
+=internal-item The [vid-tag "extra"] section is removed from
+gpConfLocal in place.  This is required because git config (used
+by fComGetConfig / fComSetConfig) refuses to parse a file whose
+keys contain '.', and typical filenames such as "MVI_0107.MP4"
+have dotted extensions.
+
+=internal-back
+
+If gpConfLocal does not exist, the function returns silently
+with an empty map and empty section.
+
+=internal-cut
+EOF
+} # fLoadExtras
+
+# --------------------------------
+fSaveExtras() {
+    # Re-attach the [vid-tag "extra"] section to $gpConfLocal.  The
+    # text is whatever fLoadExtras captured at the start of the run,
+    # so the section round-trips unchanged regardless of any other
+    # writes to the file.
+    if [[ -z "$gExtraSection" ]]; then
+        return 0
+    fi
+    if [[ ! -f "$gpConfLocal" ]]; then
+        return 0
+    fi
+
+    # Make sure the file ends with a newline before appending.
+    if [[ -s "$gpConfLocal" && $(tail -c1 "$gpConfLocal" | wc -l) -eq 0 ]]; then
+        echo >> "$gpConfLocal"
+    fi
+    printf '%s\n' "$gExtraSection" >> "$gpConfLocal"
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head3 fSaveExtras
+
+Append the saved gExtraSection (captured by fLoadExtras) back to
+gpConfLocal.  Called once at the end of the script run, after
+fSaveConf has finished writing the git-config-managed sections.
+
+If gExtraSection is empty (no [vid-tag "extra"] section was
+present at load time, or the run started with no conf file), this
+function is a no-op.
+
+=internal-cut
+EOF
+} # fSaveExtras
 
 # --------------------------------
 fPreScanOpts() {
@@ -795,7 +944,7 @@ fGetOpt() {
     local OPTARG
     local tArg
 
-    while getopts :c:C:e:E:f:k:np:P:R:t:x:z:hH:vVd tArg; do
+    while getopts :c:C:e:E:f:k:np:P:R:t:z:hH:vVd tArg; do
         case $tArg in
             # Script arguments
             c) gpEventCity="$OPTARG" ;;
@@ -809,7 +958,6 @@ fGetOpt() {
             P) gpNameLong="$OPTARG" ;;
             R) gpCopyright="$OPTARG" ;;
             t) gpTitlePat="$OPTARG" ;;
-            x) gpEventExtra="$OPTARG" ;;
             z) gpTimeZone="$OPTARG" ;;
             # Common arguments
             h) fUsage long ;;
@@ -1112,7 +1260,7 @@ fExampleCollect() {
     # Append one record to the gExample* collection arrays.
     # $1 = original basename
     # $2 = exiftool-format CreateDate "YYYY:MM:DD HH:MM:SS"
-    # Reads gpFilePat / gpTitlePat / gpEventExtra and the gFileDate*
+    # Reads gpFilePat / gpTitlePat / gExtraMap and the gFileDate*
     # globals (already populated by fConvertDate).
     local pBase="$1"
     local pCreateDate="$2"
@@ -1122,8 +1270,8 @@ fExampleCollect() {
 
     tNewName=$(  fApplyPattern "$gpFilePat"  "$pBase")
     tNewTitle=$( fApplyPattern "$gpTitlePat" "$pBase")
-    if [[ -n "$gpEventExtra" ]]; then
-        tNewTitle="$tNewTitle $gpEventExtra."
+    if [[ -n "${gExtraMap[$pBase]:-}" ]]; then
+        tNewTitle="$tNewTitle ${gExtraMap[$pBase]}."
     fi
 
     gExampleOrigNames[$gExampleIdx]="$pBase"
@@ -1208,8 +1356,8 @@ fExampleCollectSplit() {
     # so re-apply the title pattern with the same gFileDate* globals that
     # the parent fExampleCollect call used.
     tNewTitle=$(fApplyPattern "$gpTitlePat" "$pBase")
-    if [[ -n "$gpEventExtra" ]]; then
-        tNewTitle="$tNewTitle $gpEventExtra."
+    if [[ -n "${gExtraMap[$pBase]:-}" ]]; then
+        tNewTitle="$tNewTitle ${gExtraMap[$pBase]}."
     fi
 
     for (( tIdx=0; tIdx < tNumParts; tIdx++ )); do
@@ -1456,8 +1604,8 @@ fProcessFile() {
     # Get the file's new name and the Title, using the patterns
     tNewName=$(  fApplyPattern "$gpFilePat"  "$tBase")
     tNewTitle=$( fApplyPattern "$gpTitlePat" "$tBase")
-    if [[ -n "$gpEventExtra" ]]; then
-        tNewTitle="$tNewTitle $gpEventExtra."
+    if [[ -n "${gExtraMap[$tBase]:-}" ]]; then
+        tNewTitle="$tNewTitle ${gExtraMap[$tBase]}."
     fi
 
     # ----------

@@ -212,7 +212,6 @@ setUp() {
     gpEventCity="TBD"
     gpEventTitle="TBD"
     gpEventKeyword="TBD"
-    gpEventExtra=""
     gpEventFileList=""
     gpCaption="Copyright TERMS"
     gpCopyright="Copyright NAME YYYY"
@@ -224,6 +223,10 @@ setUp() {
     gpNoExec=0
     gpVerbose=0
     gpDebug=0
+
+    # Per-file extras (replaces the old single-string gpEventExtra)
+    declare -gA gExtraMap=()
+    gExtraSection=""
 
     # Per-file globals
     gFile=""
@@ -506,18 +509,6 @@ testCliBadTitlePattern() {
     assertContains "$LINENO bad title-pat" "$tResult" "missing % options"
     return 0
 } # testCliBadTitlePattern
-
-# --------------------------------
-testCliExtra() {
-    # The -x value typically has a leading space; git-config may either
-    # strip it or quote the whole value.  Match the substantive content
-    # rather than the exact spacing.
-    $cBin/vid-tag -n -e testevent -x " More info." >/dev/null 2>&1
-
-    grep -q 'extra = .*More info\.' ./vid-tag.conf
-    assertTrue "$LINENO extra saved" "[ $? -eq 0 ]"
-    return 0
-} # testCliExtra
 
 # --------------------------------
 testCliTimeZone() {
@@ -1573,8 +1564,7 @@ testSaveConf() {
     gpEventTitle="Saved Title"
     gpEventCity="Saved City"
     gpEventKeyword="kw1,kw2"
-    gpEventExtra=""
-    gpEventFileList=""
+    gpEventFileList="some.mp4 other.mp4"
 
     fSaveConf >/dev/null 2>&1
 
@@ -1610,44 +1600,20 @@ testSaveConf() {
     grep -q 'keyword = kw1,kw2'             "$tConf"
     assertTrue "$LINENO keyword"            "[ $? -eq 0 ]"
 
-    # extra is empty → should NOT be written
+    # file-list is no longer written to the conf file (it is unused
+    # by the rest of the script and just clutters the file).
+    grep -q '^	file-list ='                "$tConf"
+    assertFalse "$LINENO no file-list"      "[ $? -eq 0 ]"
+
+    # The old per-event 'extra = ...' key is gone; per-file extras
+    # live in the [vid-tag "extra"] section, written by the user.
     grep -q '^	extra ='                    "$tConf"
-    assertFalse "$LINENO no empty extra"    "[ $? -eq 0 ]"
+    assertFalse "$LINENO no event extra"    "[ $? -eq 0 ]"
 
     # Restore
     gpConfLocal="./vid-tag.conf"
     return 0
 } # testSaveConf
-
-# --------------------------------
-testSaveConf_WithExtra() {
-    local tConf
-
-    tConf="$cTmp1"
-    rm -f "$tConf"
-
-    gpConfLocal="$tConf"
-    gpEventId="extratest"
-    gpCaption="x"
-    gpCopyright="x"
-    gpFilePat="%d_%e_%f"
-    gpTitlePat="%D %E by %P"
-    gpNameLong="x"
-    gpNameShort="x"
-    gpEventTitle="x"
-    gpEventCity="x"
-    gpEventKeyword="x"
-    gpEventExtra="An extra line"
-    gpEventFileList=""
-
-    fSaveConf >/dev/null 2>&1
-
-    grep -q 'extra = An extra line' "$tConf"
-    assertTrue "$LINENO extra written" "[ $? -eq 0 ]"
-
-    gpConfLocal="./vid-tag.conf"
-    return 0
-} # testSaveConf_WithExtra
 
 # --------------------------------
 testSaveConf_NoEventId() {
@@ -1663,6 +1629,322 @@ testSaveConf_NoEventId() {
     gpConfLocal="./vid-tag.conf"
     return 0
 } # testSaveConf_NoEventId
+
+# --------------------------------
+testLoadExtras() {
+    # A standard [vid-tag "extra"] section with three file → text
+    # entries should populate gExtraMap with exact-match keys.  The
+    # section is also stripped from the file in place so that later
+    # git-config based reads/writes don't choke on the dotted keys.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "com"]
+	caption = Some caption
+[vid-tag "testevent"]
+	city = Redwood City
+[vid-tag "extra"]
+	MVI_0107.MP4 = Blocking diagram one
+	MVI_0110.MP4 = Blocking diagram two
+	MVI_0746.MP4 = Service fragment
+EOF
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=()
+    gExtraSection=""
+
+    fLoadExtras >/dev/null 2>&1
+
+    # Map populated with all three entries, exact-match keys.
+    assertEquals "$LINENO map size" "3" "${#gExtraMap[@]}"
+    assertEquals "$LINENO 0107"     "Blocking diagram one" \
+        "${gExtraMap[MVI_0107.MP4]:-}"
+    assertEquals "$LINENO 0110"     "Blocking diagram two" \
+        "${gExtraMap[MVI_0110.MP4]:-}"
+    assertEquals "$LINENO 0746"     "Service fragment" \
+        "${gExtraMap[MVI_0746.MP4]:-}"
+
+    # The detached section is held in gExtraSection.
+    assertContains "$LINENO section captured" "$gExtraSection" \
+        "MVI_0107.MP4 = Blocking diagram one"
+    assertContains "$LINENO section header"   "$gExtraSection" \
+        '[vid-tag "extra"]'
+
+    # The section was stripped from the file on disk.
+    grep -q '^\[vid-tag "extra"\]' "$tConf"
+    assertFalse "$LINENO section stripped"    "[ $? -eq 0 ]"
+
+    # Non-extra sections are untouched.
+    grep -q 'caption = Some caption' "$tConf"
+    assertTrue  "$LINENO com kept"            "[ $? -eq 0 ]"
+    grep -q 'city = Redwood City'    "$tConf"
+    assertTrue  "$LINENO event kept"          "[ $? -eq 0 ]"
+
+    # And critically: git config can now read the stripped file.
+    git config --file "$tConf" --get vid-tag.com.caption >/dev/null
+    assertTrue "$LINENO git config OK"        "[ $? -eq 0 ]"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadExtras
+
+# --------------------------------
+testLoadExtras_ExactMatch() {
+    # Match must be exact: case differences, partial matches, and
+    # extension changes must NOT match.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "extra"]
+	MVI_0107.MP4 = One
+EOF
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=()
+    fLoadExtras >/dev/null 2>&1
+
+    # Exact key hits
+    assertEquals "$LINENO exact"   "One" "${gExtraMap[MVI_0107.MP4]:-}"
+
+    # Case mismatch on filename: NOT a match
+    assertEquals "$LINENO lowercase miss" "" "${gExtraMap[mvi_0107.mp4]:-}"
+    # Case mismatch on extension: NOT a match
+    assertEquals "$LINENO ext-case miss"  "" "${gExtraMap[MVI_0107.mp4]:-}"
+    # Partial: NOT a match
+    assertEquals "$LINENO partial miss"   "" "${gExtraMap[MVI_0107]:-}"
+    # Different file: NOT a match
+    assertEquals "$LINENO other miss"     "" "${gExtraMap[MVI_0108.MP4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadExtras_ExactMatch
+
+# --------------------------------
+testLoadExtras_MissingFile() {
+    # No conf file → empty map, empty section, no error.
+    local tConf="$cTmp1.nope"
+    rm -f "$tConf"
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=( ["pre-existing"]="should be cleared" )
+    gExtraSection="should be cleared"
+
+    fLoadExtras >/dev/null 2>&1
+
+    assertEquals "$LINENO empty map"     "0"  "${#gExtraMap[@]}"
+    assertEquals "$LINENO empty section" ""   "$gExtraSection"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadExtras_MissingFile
+
+# --------------------------------
+testLoadExtras_NoSection() {
+    # Conf file exists but has no [vid-tag "extra"] section → empty
+    # map, empty section, file untouched.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "com"]
+	caption = Just a caption
+EOF
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=( ["stale"]="value" )
+    gExtraSection="stale"
+
+    fLoadExtras >/dev/null 2>&1
+
+    assertEquals "$LINENO empty map"      "0" "${#gExtraMap[@]}"
+    assertEquals "$LINENO empty section"  ""  "$gExtraSection"
+
+    # Original file content unchanged (no section to strip).
+    grep -q 'caption = Just a caption' "$tConf"
+    assertTrue "$LINENO file untouched"   "[ $? -eq 0 ]"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadExtras_NoSection
+
+# --------------------------------
+testLoadExtras_SkipsCommentsAndBlanks() {
+    # Comment lines (# or ;) and blank lines inside the [extra]
+    # section must be skipped, not parsed as keys.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "extra"]
+	# this is a comment
+	MVI_0107.MP4 = First entry
+
+	; another comment style
+	MVI_0110.MP4 = Second entry
+EOF
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=()
+    fLoadExtras >/dev/null 2>&1
+
+    assertEquals "$LINENO map size"  "2"             "${#gExtraMap[@]}"
+    assertEquals "$LINENO 0107"      "First entry"   "${gExtraMap[MVI_0107.MP4]:-}"
+    assertEquals "$LINENO 0110"      "Second entry"  "${gExtraMap[MVI_0110.MP4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadExtras_SkipsCommentsAndBlanks
+
+# --------------------------------
+testSaveExtras_RoundTrip() {
+    # The detach/reattach pattern must round-trip the [extra] section
+    # unchanged: load → strip → save → file regains the section.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "com"]
+	caption = Hello
+[vid-tag "extra"]
+	MVI_0107.MP4 = One
+	MVI_0110.MP4 = Two
+EOF
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=()
+    gExtraSection=""
+
+    fLoadExtras >/dev/null 2>&1
+
+    # After load: file has no [extra] section.
+    grep -q '^\[vid-tag "extra"\]' "$tConf"
+    assertFalse "$LINENO stripped"   "[ $? -eq 0 ]"
+
+    fSaveExtras >/dev/null 2>&1
+
+    # After save: file has [extra] section back, with both entries.
+    grep -q '^\[vid-tag "extra"\]'              "$tConf"
+    assertTrue  "$LINENO header restored"       "[ $? -eq 0 ]"
+    grep -q 'MVI_0107.MP4 = One'                "$tConf"
+    assertTrue  "$LINENO 0107 restored"         "[ $? -eq 0 ]"
+    grep -q 'MVI_0110.MP4 = Two'                "$tConf"
+    assertTrue  "$LINENO 0110 restored"         "[ $? -eq 0 ]"
+
+    # Other sections also still present.
+    grep -q 'caption = Hello'                   "$tConf"
+    assertTrue  "$LINENO com kept"              "[ $? -eq 0 ]"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testSaveExtras_RoundTrip
+
+# --------------------------------
+testSaveExtras_RoundTripWithGitConfig() {
+    # Realistic flow: load → strip → fSaveConf writes new keys via git
+    # config → fSaveExtras reattaches.  The final file must be valid
+    # for both git-config and the awk parser (so a second fLoadExtras
+    # would see the same map).
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "com"]
+	caption = Old caption
+[vid-tag "extra"]
+	MVI_0107.MP4 = Blocking diagram one
+EOF
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=()
+    gExtraSection=""
+
+    # 1. detach
+    fLoadExtras >/dev/null 2>&1
+
+    # 2. write a new value via git config (would fail if [extra]
+    #    were still in the file)
+    fComSetConfig -l -k "vid-tag.com.caption" -v "New caption" >/dev/null 2>&1
+    assertEquals "$LINENO write OK" "0" "$?"
+
+    # 3. reattach
+    fSaveExtras >/dev/null 2>&1
+
+    # Final file: new caption AND [extra] back.
+    grep -q 'caption = New caption' "$tConf"
+    assertTrue  "$LINENO new caption"      "[ $? -eq 0 ]"
+    grep -q 'MVI_0107.MP4 = Blocking diagram one' "$tConf"
+    assertTrue  "$LINENO extra back"       "[ $? -eq 0 ]"
+
+    # Second load reads the same map.
+    declare -gA gExtraMap=()
+    gExtraSection=""
+    fLoadExtras >/dev/null 2>&1
+    assertEquals "$LINENO 2nd-load value"  "Blocking diagram one" \
+        "${gExtraMap[MVI_0107.MP4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testSaveExtras_RoundTripWithGitConfig
+
+# --------------------------------
+testSaveExtras_NoSectionIsNoop() {
+    # When fLoadExtras found no section, fSaveExtras must not append
+    # anything (empty gExtraSection → no-op).
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'EOF'
+[vid-tag "com"]
+	caption = Solo
+EOF
+    local tBefore
+    tBefore=$(cat "$tConf")
+
+    gpConfLocal="$tConf"
+    declare -gA gExtraMap=()
+    gExtraSection=""
+
+    fLoadExtras >/dev/null 2>&1
+    fSaveExtras >/dev/null 2>&1
+
+    local tAfter
+    tAfter=$(cat "$tConf")
+    assertEquals "$LINENO no-op" "$tBefore" "$tAfter"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testSaveExtras_NoSectionIsNoop
+
+# --------------------------------
+testExample_FileMatchedByExtras() {
+    # End-to-end (dry-run): drive fExample with gExtraMap entries
+    # keyed by the dummy file basename.  The matched file's title
+    # gets the extra appended; unmatched files don't.
+    local tFile="vid-tag-example.txt"
+    local tContent
+
+    rm -f "$tFile"
+
+    gpNoExec=1
+    gpEventId="testevent"
+    gpCaption="x"
+    gpCopyright="x"
+    gpNameLong="Photog"
+    gpNameShort="P"
+    gpEventCity="Town"
+    gpEventTitle="Event"
+    gpEventKeyword="kw"
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%D, %c, %E, by %P.'
+    gpCmdLine="vid-tag -n -e testevent"
+
+    declare -gA gExtraMap=( ["FILE.mp4"]="Insider note" )
+
+    fExample
+    tContent=$(cat "$tFile")
+
+    # Title ends with ". Insider note." for the matched file.
+    assertContains "$LINENO matched title" "$tContent" \
+        "Town, Event, by Photog. Insider note."
+
+    rm -f "$tFile"
+    return 0
+} # testExample_FileMatchedByExtras
 
 # --------------------------------
 testPreScanOpts() {
@@ -1699,7 +1981,7 @@ testGetOpt() {
     # Drive fGetOpt directly and verify each option lands in the right gp*
     fGetOpt -e SomeEvent -c "Town" -C "Cap" -E "Long" -f "%d_%f" \
             -k "k1,k2" -p "AB" -P "Alice B" -R "(c) 2030" \
-            -t "%D by %P" -x " more." -z "utc-1" -n
+            -t "%D by %P" -z "utc-1" -n
 
     assertEquals "$LINENO -e"  "someevent"   "$gpEventId"
     assertEquals "$LINENO -c"  "Town"        "$gpEventCity"
@@ -1711,7 +1993,6 @@ testGetOpt() {
     assertEquals "$LINENO -P"  "Alice B"     "$gpNameLong"
     assertEquals "$LINENO -R"  "(c) 2030"    "$gpCopyright"
     assertEquals "$LINENO -t"  "%D by %P"    "$gpTitlePat"
-    assertEquals "$LINENO -x"  " more."      "$gpEventExtra"
     assertEquals "$LINENO -z"  "utc-1"       "$gpTimeZone"
     assertEquals "$LINENO -n"  "1"           "$gpNoExec"
     return 0
@@ -1881,8 +2162,11 @@ testExample_NoExec() {
 
 # --------------------------------
 testExample_NoExecExtra() {
-    # When gpEventExtra is set, fExample appends it (plus a trailing '.')
-    # to the title - same rule as fProcessFile.
+    # When gExtraMap has an entry whose key matches the (dummy) input
+    # file basename, fExample appends " <value>." to the title.
+    # In dry-run mode the dummy basename is "FILE.mp4", so we set the
+    # corresponding map entry and verify the title.  Same rule as
+    # fProcessFile.
     local tFile="vid-tag-example.txt"
     local tContent
 
@@ -1897,10 +2181,11 @@ testExample_NoExecExtra() {
     gpEventCity="x"
     gpEventTitle="Base Title"
     gpEventKeyword="x"
-    gpEventExtra="More info"
     gpFilePat='%d_%e_%p_%f'
     gpTitlePat='%E'
     gpCmdLine="vid-tag -n -e testevent"
+
+    declare -gA gExtraMap=( ["FILE.mp4"]="More info" )
 
     fExample
     tContent=$(cat "$tFile")
@@ -1911,6 +2196,44 @@ testExample_NoExecExtra() {
     rm -f "$tFile"
     return 0
 } # testExample_NoExecExtra
+
+# --------------------------------
+testExample_NoExecExtra_NoMatch() {
+    # When gExtraMap is empty (or the dummy basename isn't a key), the
+    # title is left exactly as %E without any append.
+    local tFile="vid-tag-example.txt"
+    local tContent
+
+    rm -f "$tFile"
+
+    gpNoExec=1
+    gpEventId="testevent"
+    gpCaption="x"
+    gpCopyright="x"
+    gpNameLong="x"
+    gpNameShort="x"
+    gpEventCity="x"
+    gpEventTitle="Base Title"
+    gpEventKeyword="x"
+    gpFilePat='%d_%e_%p_%f'
+    gpTitlePat='%E'
+    gpCmdLine="vid-tag -n -e testevent"
+
+    declare -gA gExtraMap=( ["OTHER.mp4"]="Should not show" )
+
+    fExample
+    tContent=$(cat "$tFile")
+
+    assertContains "$LINENO base title only" "$tContent" \
+        "Title = Base Title"
+    # Confirm the unmatched value did NOT leak into the title
+    if grep -q "Should not show" "$tFile"; then
+        fail "$LINENO unmatched extra leaked into title"
+    fi
+
+    rm -f "$tFile"
+    return 0
+} # testExample_NoExecExtra_NoMatch
 
 # --------------------------------
 testExample_RealFiles() {
@@ -1936,7 +2259,6 @@ testExample_RealFiles() {
     gpEventCity="Redwood City"
     gpEventTitle="This is a test title"
     gpEventKeyword="PBP,Protest"
-    gpEventExtra=""
     gpFilePat='%d_%e_%p_%f'
     gpTitlePat='%D, %c, %E, by %P.'
     gpEventFileList="MVI_0107.MP4 MVI_0110.MP4"
@@ -2003,7 +2325,6 @@ testExampleCollectSplit_Short() {
     gpNameLong="Bruce Rafnel"
     gpEventCity="Redwood City"
     gpEventTitle="This is a test title"
-    gpEventExtra=""
     gpFilePat='%d_%e_%p_%f'
     gpTitlePat='%D, %c, %E, by %P.'
 
@@ -2037,7 +2358,6 @@ testExampleCollectSplit_Long() {
     gpNameLong="Bruce Rafnel"
     gpEventCity="Redwood City"
     gpEventTitle="This is a test title"
-    gpEventExtra=""
     gpFilePat='%d_%e_%p_%f'
     gpTitlePat='%D, %c, %E, by %P.'
 
@@ -2106,7 +2426,6 @@ testExample_RealFilesWithSplit() {
     gpEventCity="Redwood City"
     gpEventTitle="This is a test title"
     gpEventKeyword="PBP,Protest"
-    gpEventExtra=""
     gpFilePat='%d_%e_%p_%f'
     gpTitlePat='%D, %c, %E, by %P.'
     gpEventFileList="MVI_0746.MP4"

@@ -35,7 +35,6 @@ export gpConfLocal
 export gpCopyright
 export gpDebug
 export gpEventCity
-export gpEventExtra
 export gpEventFileList
 export gpEventKeyword
 export gpEventTitle
@@ -119,6 +118,13 @@ fi
 # even when it was supplied on the command line.
 fPreScanOpts "$@"
 
+# Detach the [vid-tag "extra"] section before any git-config based I/O.
+# fLoadExtras populates gExtraMap from $gpConfLocal and strips the
+# section from the file so fLoadConf / fSaveConf can use git config
+# without choking on dotted file-name keys.  fSaveExtras (below)
+# re-attaches the section at the end of the run.
+fLoadExtras
+
 # Load config file.
 # fPreScanOpts has already set gpEventId from -e (if given) so that
 # fLoadConf can resolve the correct INI section.
@@ -133,6 +139,9 @@ fGetOpt "$@"
 fValidate
 
 fSaveConf
+
+# Restore the [vid-tag "extra"] section that fLoadExtras detached.
+fSaveExtras
 
 # -------------------
 # Build vid-tag-example.txt (preview of renames + metadata).

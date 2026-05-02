@@ -707,6 +707,89 @@ CONF
     return 0
 } # testCliTimeZoneFromConfSlow
 
+# --------------------------------
+testCliTimeZoneExifSlow() {
+    # Full-pipeline test: run vid-tag (without -n) against MVI_0107.MP4
+    # with TimeZone=utc-1 and verify that ALL seven date/time exif fields
+    # in the output file plus the filesystem mtime carry the converted
+    # local time, and that the output filename uses the converted date.
+    #
+    # MVI_0107 CreateDate: 2016:11:21 00:20:59 (utc-1 = UTC+1)
+    #   → 2016-11-20 23:20:59 UTC → PST (UTC-8 in Nov): 2016:11:20 15:20:59
+    local tExif
+    local tFile
+    local tSavedTZ="${TZ-}"
+    local tResult
+
+    if [[ ! -f MVI_0107.MP4 ]]; then
+        fail "$LINENO Missing test files."
+        return 0
+    fi
+
+    export TZ="America/Los_Angeles"
+
+    cat > vid-tag.conf <<'CONF'
+[vid-tag "com"]
+	caption = Test caption
+	copyright = Copyright Test 2026
+	file-pat = %d_%e_%p_%f
+	name-long = Test Photog
+	name-short = TP
+	title-pat = %D, %c, %E, by %P.
+[vid-tag "tzevent"]
+	city = Testville
+	keyword = tz,test
+	title = TZ Test Event
+	time-zone = utc-1
+CONF
+
+    rm -rf ./output
+    tResult=$($cBin/vid-tag -vv -e tzevent MVI_0107.MP4 2>&1)
+    if [[ $? -ne 0 ]]; then
+        fail "$LINENO vid-tag run failed: $tResult"
+        if [[ -n "$tSavedTZ" ]]; then export TZ="$tSavedTZ"; else unset TZ; fi
+        return 0
+    fi
+
+    tFile="./output/2016-11-20_tzevent_TP_MVI_0107.MP4"
+    assertTrue "$LINENO output file exists" "[ -f $tFile ]"
+    if [[ ! -f "$tFile" ]]; then
+        if [[ -n "$tSavedTZ" ]]; then export TZ="$tSavedTZ"; else unset TZ; fi
+        return 0
+    fi
+
+    tExif=$(exiftool "$tFile" 2>&1)
+
+    # ----- All seven date fields must show the converted local time -----
+    assertContains "$LINENO DateTimeOriginal" "$tExif" \
+        "Date/Time Original              : 2016:11:20 15:20:59"
+    assertContains "$LINENO CreateDate" "$tExif" \
+        "Create Date                     : 2016:11:20 15:20:59"
+    assertContains "$LINENO ModifyDate" "$tExif" \
+        "Modify Date                     : 2016:11:20 15:20:59"
+    assertContains "$LINENO TrackCreateDate" "$tExif" \
+        "Track Create Date               : 2016:11:20 15:20:59"
+    assertContains "$LINENO TrackModifyDate" "$tExif" \
+        "Track Modify Date               : 2016:11:20 15:20:59"
+    assertContains "$LINENO MediaCreateDate" "$tExif" \
+        "Media Create Date               : 2016:11:20 15:20:59"
+    assertContains "$LINENO MediaModifyDate" "$tExif" \
+        "Media Modify Date               : 2016:11:20 15:20:59"
+
+    # ----- touch log confirms the mtime command used the converted time.
+    #       (File Modification Date/Time in exiftool reflects the host's
+    #       system TZ and is therefore not asserted here directly.) -----
+    assertContains "$LINENO touch log" "$tResult" \
+        'touch -d "2016-11-20 15:20:59" "2016-11-20_tzevent_TP_MVI_0107.MP4"'
+
+    if [[ -n "$tSavedTZ" ]]; then
+        export TZ="$tSavedTZ"
+    else
+        unset TZ
+    fi
+    return 0
+} # testCliTimeZoneExifSlow
+
 # ========================================
 # Full-pipeline CLI tests
 #

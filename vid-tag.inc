@@ -1404,18 +1404,17 @@ fAddMin() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head3 fAddMin "pCreateDateLine" pMinutes
+=internal-head3 fAddMin "pTimestamp" pMinutes
 
-Add pMinutes to the timestamp found in a "Create Date" a grep'ed line
-from exiftool.  The result is echoed in exiftool format "YYYY:MM:DD
-HH:MM:SS".
+Add pMinutes to a timestamp and echo the result in exiftool format
+"YYYY:MM:DD HH:MM:SS".
 
-pCreateDateLine is the raw grep output, e.g.:
-    "Create Date                     : 2026:03:01 19:57:49"
+pTimestamp is either a bare exiftool timestamp ("YYYY:MM:DD HH:MM:SS")
+or a grep'ed exiftool label line; in either case the date/time portion
+is extracted automatically via pattern stripping.
 
-The label prefix is stripped automatically.  Only minute-to-hour
-overflow is handled; hour-to-day overflow is not expected for
-10-minute video segments.
+Only minute-to-hour overflow is handled; hour-to-day overflow is not
+expected for 10-minute video segments.
 
 =internal-cut
 EOF
@@ -1432,7 +1431,6 @@ fProcessFile() {
     local -i tIncMin
     local tBase
     local tCmd
-    local tCreateDate
     local tDate
     local tFile
     local tLength
@@ -1472,6 +1470,9 @@ fProcessFile() {
 
     # ----------
     # Use exiftool to rename AND set all metadata fields.
+    # When a TimeZone conversion is active, also write the converted
+    # local time back into every date/time field so the file's metadata
+    # is consistent with the renamed path and the mtime set by touch.
     tCmd=(
         exiftool
         -overwrite_original
@@ -1484,8 +1485,19 @@ fProcessFile() {
         -Caption="$gpCaption"
         -Description="$gpCaption"
         -ImageDescription="$gpCaption"
-        "$tBase"
     )
+    if [[ -n "$gpTimeZone" && "$gpTimeZone" != "local" ]]; then
+        tCmd+=(
+            -DateTimeOriginal="$gFileDate"
+            -CreateDate="$gFileDate"
+            -ModifyDate="$gFileDate"
+            -TrackCreateDate="$gFileDate"
+            -TrackModifyDate="$gFileDate"
+            -MediaCreateDate="$gFileDate"
+            -MediaModifyDate="$gFileDate"
+        )
+    fi
+    tCmd+=( "$tBase" )
     fLog -p info -m "Rename: $tBase -> $tNewName" -l $LINENO
     fLog -p info -m "Set new meta values" -l $LINENO
     fLog -p debug-1 -m "Cmd: ${tCmd[*]}" -l $LINENO
@@ -1520,7 +1532,8 @@ fProcessFile() {
     ffmpeg -i $tNewName -c copy -map 0 -segment_time 00:10:00 -f segment -reset_timestamps 1 ${tNewName%.*}-%02d.mp4 >/dev/null 2>&1
 
     fLog -p info -m "Copy the exif data from original" -l $LINENO
-    tCreateDate=$(exiftool $tNewName | grep 'Create Date')
+    # gFileDate is already in local time (converted by fConvertTimeZone in
+    # fReadFileDate), so use it directly as the base for part timestamps.
     for tFile in ${tNewName%.*}-*.mp4; do
         fLog -p info -m "exiftool -TagsFromFile $tNewName -all:all $tFile" -l $LINENO
         exiftool -TagsFromFile $tNewName -all:all $tFile >/dev/null 2>&1
@@ -1529,7 +1542,7 @@ fProcessFile() {
         tPart=${tFile%.mp4}
         tPart=${tPart##*-}
         ((tIncMin=tPart * 10))
-        tNewTime=$(fAddMin "$tCreateDate" $tIncMin)
+        tNewTime=$(fAddMin "$gFileDate" $tIncMin)
         exiftool \
             -DateTimeOriginal="$tNewTime" \
             -CreateDate="$tNewTime" \
@@ -1563,13 +1576,24 @@ Steps:
 
 =internal-over 4
 
-=internal-item 1. Read CreateDate from file (fReadFileDate).
+=internal-item 1. Read CreateDate from file (fReadFileDate), which
+applies fConvertTimeZone so gFileDate* globals hold local time.
 
 =internal-item 2. Expand file-name and title patterns (fApplyPattern).
 
-=internal-item 3. Set filesystem mtime to match CreateDate (touch).
+=internal-item 3. Run a single exiftool call to rename and set all
+metadata.  When gpTimeZone is active (non-empty and not "local"), the
+seven date/time exif fields (DateTimeOriginal, CreateDate, ModifyDate,
+TrackCreateDate, TrackModifyDate, MediaCreateDate, MediaModifyDate) are
+also written with the converted local time so the file metadata is
+consistent with the renamed path.
 
-=internal-item 4. Run a single exiftool call to rename and set all metadata.
+=internal-item 4. Set filesystem mtime to the converted CreateDate (touch).
+
+=internal-item 5. If the file is longer than 10 minutes, split it into
+10-min parts with ffmpeg and copy tags from the parent.  Each part's
+seven date fields and mtime are set using gFileDate (already converted)
+as the base, shifted by part-index * 10 minutes via fAddMin.
 
 =internal-back
 

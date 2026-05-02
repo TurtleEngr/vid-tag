@@ -629,7 +629,7 @@ testCliCmdLineOverridesConf() {
 } # testCliCmdLineOverridesConf
 
 # --------------------------------
-testCliTimeZoneFromConfSlow() {
+testCliTimeZoneFromConf() {
     # Integration test: with TimeZone defined in vid-tag.conf, the
     # generated vid-tag-example.txt must show CreateDate values that
     # have been converted from the configured TimeZone to local time,
@@ -708,7 +708,7 @@ CONF
 } # testCliTimeZoneFromConfSlow
 
 # --------------------------------
-testCliTimeZoneExifSlow() {
+testCliTimeZoneExif() {
     # Full-pipeline test: run vid-tag (without -n) against MVI_0107.MP4
     # with TimeZone=utc-1 and verify that ALL seven date/time exif fields
     # in the output file plus the filesystem mtime carry the converted

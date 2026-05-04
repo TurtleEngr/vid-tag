@@ -18,7 +18,7 @@ usage :
 	@echo 'dist-clean - remove all built files'
 	@echo 'update     - check for newer dependent files'
 	@echo 'build      - Update README and update cVer in files'
-	@echo 'test	  - Quick tests (about 7sec)'
+	@echo 'test       - Quick tests (about 7sec)'
 	@echo 'test-all   - Test with video files; slow (about 16min)'
 	@echo 'package    - create the package zip file'
 	@echo 'release    - copy package to release server'

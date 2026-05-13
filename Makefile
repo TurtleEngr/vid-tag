@@ -65,7 +65,7 @@ release : package
 	git co develop
 	read -p "You must have a user on moria. ^c to quit"
 	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
-	rsync -aP READEME.html pkg/vid-tag-$(cVer).zip \
+	rsync -aP README.html pkg/vid-tag-$(cVer).zip \
 		moria:/rel/released/software/own/vid-tag/
 
 release-test : package-test

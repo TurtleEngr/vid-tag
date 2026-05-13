@@ -8,7 +8,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 # SYNOPSIS
 
-First run. Create config file: ./vid-tag.conf
+First run. Create config file: `./vid-tag.conf`
 
     vid-tag -n -e "pEventId" [File1 File2 ...]
 
@@ -79,15 +79,15 @@ file list.
 ### First run of vid-tag
 
 - cd to the directory with your video files (or the directory
-where you want ./output/ created).  Copy the vid-tag.conf file from
+where you want ./output/ created).  Copy the `vid-tag.conf` file from
 the install dir. This is optional. If missing a default version will
 be created.
 
         Run: vid-tag -n -e testevent
 
-- That will create or update ./vid-tag.conf and vid-tag-example.txt
-files.
-- You can now edit the vid-tag.conf file, or use the command line
+- That will create or update `./vid-tag.conf` and
+`vid-tag-example.txt` files.
+- You can now edit the `vid-tag.conf` file, or use the command line
 options to update the file. You want to change "testevent" to a short
 ID that will be put in your renamed video files. See the -e option.
 
@@ -97,7 +97,7 @@ ID that will be put in your renamed video files. See the -e option.
 pattern, and the -t option for how you can change the Title pattern.
 - Use the -v option to see some progress information. Use -vv if
 you want to see more progress details.
-- After each run, the vid-tag.conf file is updated with any
+- After each run, the `vid-tag.conf` file is updated with any
 changes, and the `vid-tag-example.txt` file will summarize how the
 files are modified.
 - Between each run you should probably remove everything in the
@@ -114,7 +114,7 @@ time.
 
     Short event tag used in file names. It is also the Id used to access
     the specific event details in the `./vid-tag.conf` file. If the
-    pEventId is not found, then it will be added to `vid-tag.conf`.
+    pEventId is not found, then it will be added to `./vid-tag.conf`.
 
     The value will be changed to lower-case and any spaces will be changed
     to '\_'
@@ -203,7 +203,7 @@ time.
 - **-n**
 
     No-execute / dry-run.  Validate inputs and create config file
-    **./vid-tag.conf**, but do not create output/, rename files, or modify
+    `./vid-tag.conf`, but do not create output/, rename files, or modify
     metadata.
 
 - **-h**
@@ -361,11 +361,6 @@ All of this code is maintained at:
 
 The releases are marked with vN.N tags.
 
-Architected by Turtle Engineer. Mostly coded by Claude Opus 4.7.
-Script and testing framework by Turtle Engineer (template.sh,
-bash-com.inc, bash-com.test) For the prompts, see:
-https://moria.whyayh.com/cgi-bin/cvsweb-admin/app/doc-vid-tag/file-labeling.org
-
 # CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin
@@ -410,4 +405,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3
+cVer=1.3.2

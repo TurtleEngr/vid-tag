@@ -84,8 +84,8 @@ README.md : vid-tag vid-tag.inc
 	-./vid-tag -H md >README.md
 
 README.html : README.md
-	markdown $? >$@
-	tidy -m -config ./tidyxhtml.conf $@
+	-markdown $? >$@
+	-tidy -m -config ./tidyxhtml.conf $@
 
 check-bash-com.inc : ~/bin/bash-com.inc
 	-diff $? bash-com.inc | grep -v Revision:

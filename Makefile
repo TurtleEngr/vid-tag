@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 1.3.1
+cVer = 1.3.2
 
 # --------------------
 # Main targets
@@ -35,7 +35,7 @@ dist-clean : clean
 
 update check : check-bash-com.inc check-bash-com.test check-shunit2.1
 
-build : README.md
+build : README.html
 	for i in vid-tag vid-tag.inc vid-tag.test; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
@@ -65,7 +65,7 @@ release : package
 	git co develop
 	read -p "You must have a user on moria. ^c to quit"
 	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
-	rsync -aP pkg/vid-tag-$(cVer).zip \
+	rsync -aP READEME.html pkg/vid-tag-$(cVer).zip \
 		moria:/rel/released/software/own/vid-tag/
 
 release-test : package-test
@@ -100,7 +100,7 @@ pkg :
 	mkdir -p $@
 
 pkg/vid-tag-$(cVer).zip :
-	zip $@ vid-tag vid-tag.inc vid-tag.conf bash-com.inc LICENSE
+	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
 
 pkg/vid-tag-test-$(cVer).zip :
 	zip $@ vid-tag.test bash-com.test shunit2.1

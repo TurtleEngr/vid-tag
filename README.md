@@ -361,6 +361,11 @@ All of this code is maintained at:
 
 The releases are marked with vN.N tags.
 
+Architected by Turtle Engineer. Mostly coded by Claude Opus 4.7.
+Script and testing framework by Turtle Engineer (template.sh,
+bash-com.inc, bash-com.test) For the prompts, see:
+https://moria.whyayh.com/cgi-bin/cvsweb-admin/app/doc-vid-tag/file-labeling.org
+
 # CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin

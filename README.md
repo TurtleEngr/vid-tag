@@ -374,6 +374,9 @@ p - patch version number. There have only been cosmetic changes. For
 example, typos, documentation changes, and maybe some very minor bug
 fixes.
 
+Any time there is a new "Release," one of these numbers will be
+incremented.
+
 # CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin

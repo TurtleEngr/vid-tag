@@ -482,23 +482,24 @@ The releases are marked with vM.m.p tags.
 
 vM.m.p tags.
 
-M - major version number. The program may not will not work with
-previous versions of command line options or config files.
+M - major version number. The program may not work with previous
+versions of command line options or config files.
 
 m - minor version number. New features or bug fixes have been added.
 It will probably work with previous versions of command line options
-or config files.
+or config files, but new features might not work with older versions.
 
 p - patch version number. There have only been cosmetic changes. For
 example, typos, documentation changes, and maybe some very minor bug
 fixes.
 
 Any time there is a new "Release," one of these numbers will be
-incremented. Also if you are looking at this on github, the
-"development" branch is for newer (maybe untested) versions (where the
-version number will likely be different from a released version). The
-"main" branch is where the official released code lives, with the
-vM.m.p tags.
+incremented.
+
+Also if you are looking at this on github, the "development" branch is
+for newer (maybe untested) versions (where the version number will
+likely be different from a released version). The "main" branch is
+where the official released code lives, with the vM.m.p tags.
 
 =head1 CAVEATS
 

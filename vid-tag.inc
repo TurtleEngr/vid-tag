@@ -478,6 +478,19 @@ All of this code is maintained at:
 
 The releases are marked with vN.N tags.
 
+Standard version numbering scheme: vM.m.p
+
+M - major version number. The program may not will not work with
+previous versions of command line options or config files.
+
+m - minor version number. New features or bug fixes have been added.
+It will probably work with previous versions of command line options
+or config files.
+
+p - patch version number. There have only been cosmetic changes. For
+example, typos, documentation changes, and maybe some very minor bug
+fixes.
+
 =head1 CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin

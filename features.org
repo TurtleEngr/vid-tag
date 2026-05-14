@@ -1,0 +1,49 @@
+* vid-tag features
+
+** Current Features
+
++ Do not modify the input files. Copy the files and make changes to
+  those files.
+
++ Rename files to follow a naming convention.
+
++ Common EXIF tags can be defined. For example: caption, copyright,
+  author name (long and initials), file naming pattern, title naming
+  pattern
+
++ Event specific EXIF tags can be defined. For example: title, city,
+  keywords.
+
++ Add EXIF Title text to the file. The title pattern can be defined.
+
++ The times can be fixed with the TimeZone option (by hours or
+  minutes).  (Useful if you forgot to update you camera's clock or you
+  camera outputs UTC timestamps, while others use local time.)
+
++ Fix the time stamps in the file and the file's creation time to all
+  be the same for each file.
+
++ Add an extra sentence to titles for specified files.
+
++ If a video file is greater than 10min long, split it into 10min
+  files.  The create time is incremented by 10min for each split file.
+
+** Future Features
+
+*** Create a thumbnail image for a video file.
+
++ If a time has been specified, extract a frame at that defined time
+  in a file. If no time, extract a frame Nsec into the video (see
+  common for N).
+
++ The thumbnail will have the same base-name as the video.
+
++ Add "VIDEO" text to center of thumbnail. (see common for text and
+  location.)
+
++ Add the "extra" sentence text (if defined) the the upper-left of
+  thumbnail.
+
++ Apply all of the EXIF values from the video to the thumbnail,
+  including the creation date. (Maybe one sec earlier, so it shows up
+  first.)

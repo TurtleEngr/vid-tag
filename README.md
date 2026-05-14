@@ -427,6 +427,8 @@ the "fast" test option for vid-tag.test. For example:
 
 Report bugs at: https://github.com/TurtleEngr/vid-tag/issues
 
+Always include the version number of the script you were using.
+
 # AUTHOR
 
 Turtle Engineer

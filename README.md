@@ -378,7 +378,8 @@ fixes.
 
 Any time there is a new "Release," one of these numbers will be
 incremented. Also if you are looking at this on github, the
-"development" branch is for newer (maybe untested) versions. The
+"development" branch is for newer (maybe untested) versions (where the
+version number will likely be different from a released version). The
 "main" branch is where the official released code lives, with the
 vM.m.p tags.
 

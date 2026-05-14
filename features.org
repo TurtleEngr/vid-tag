@@ -17,8 +17,8 @@
 + Add EXIF Title text to the file. The title pattern can be defined.
 
 + The times can be fixed with the TimeZone option (by hours or
-  minutes).  (Useful if you forgot to update you camera's clock or you
-  camera outputs UTC timestamps, while others use local time.)
+  minutes).  (Useful if you forgot to update you camera's clock or
+  your camera outputs UTC timestamps, while others use local time.)
 
 + Fix the time stamps in the file and the file's creation time to all
   be the same for each file.

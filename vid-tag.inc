@@ -492,7 +492,10 @@ example, typos, documentation changes, and maybe some very minor bug
 fixes.
 
 Any time there is a new "Release," one of these numbers will be
-incremented.
+incremented. Also if you are looking at this on github, the
+"development" branch is for newer (maybe untested) versions. The
+"main" branch is where the official released code lives, with the
+vM.m.p tags.
 
 =head1 CAVEATS
 

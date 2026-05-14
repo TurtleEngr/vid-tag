@@ -1,6 +1,6 @@
 set -u
 
-export cVer=1.3.2
+export cVer=1.3.3
 export cBin
 export cExampleFile
 export cOutputDir
@@ -482,28 +482,35 @@ The releases are marked with vN.N tags.
 
 This script is mainly for Linux systems. However, if you have CygWin
 installed on your Windows PC, and you have install the Required
-packages (and set your PATH env.) this could work. For MacOS you'll
-probably want to install "brew" to get the Required programs.
+packages, definded in the SEE ALSO section, and set your PATH env.,
+this could work. For MacOS you'll probably want to install "brew" to
+get the Required programs.
 
-If you do get this running on Windows or MacOS, let me know, with an
-"issue" report, what you had to do to get it running. For example
-include programs needed, configuration directions, and any changes
-you made to the scripts.
+If you do get this running on Windows or MacOS, please let me know,
+with an "issue" report (label it with "enhancement" or
+"documentation"). What did you do to get it running. For example
+include other programs needed, configuration directions, and any
+changes you made to the scripts. If you know github, fork the vid-tag
+repo, add your changes, then send me a "pull" request, to the
+"develop" branch.
 
 =head1 DIAGNOSTICS
 
-This tool comes with a test script to verify vid-tag script is working
-OK.  Download these files:
+This tool comes with a test script to verify the vid-tag script is
+working OK.  Download these files (the VER should match vid-tag's
+VER):
 
     vid-tag-test-VER.zip
     vid-tag-test-input.zip (4.5G)
 
-from: https://moria.whyayh.com/rel/released/software/own/vid-tag/
+From: https://moria.whyayh.com/rel/released/software/own/vid-tag/
 
 Unzip vid-tag-test-VER.zip to the install dir.
 
 Unzip vid-tag-test-input.zip to a "test" directory. In the test
-directory run vid-tag.test.
+directory run:
+
+    ./vid-tag.test -T all
 
 If you don't have space for the vid-tag-test-input.zip files, just use
 the "fast" test option for vid-tag.test. For example:
@@ -524,7 +531,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3.2
+cVer=1.3.3
 
 =cut
 

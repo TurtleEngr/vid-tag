@@ -36,7 +36,7 @@ dist-clean : clean
 update check : check-bash-com.inc check-bash-com.test check-shunit2.1
 
 build : README.html
-	for i in vid-tag vid-tag.inc vid-tag.test; do \
+	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
 	-git ci -am Updated
@@ -80,10 +80,10 @@ install : build
 # --------------------
 # Single targets
 
-README.md : vid-tag vid-tag.inc
+README.md : vid-tag vid-tag.inc Makefile
 	-./vid-tag -H md >README.md
 
-README.html : README.md
+README.html : README.md Makefile
 	-markdown $? >$@
 	-tidy -m -config ./tidyxhtml.conf $@
 

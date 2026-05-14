@@ -359,9 +359,11 @@ All of this code is maintained at:
 
     https://github.com/TurtleEngr/vid-tag
 
-The releases are marked with vN.N tags.
+The releases are marked with vM.m.p tags.
 
-Standard version numbering scheme: vM.m.p
+## Standard version numbering scheme
+
+vM.m.p tags.
 
 M - major version number. The program may not will not work with
 previous versions of command line options or config files.

@@ -293,10 +293,9 @@ Config var: C<Keyword>. Default: "PBP, event"
 
 Config var: C<TimeZone>.  Default: C<local> (no conversion).
 
-When set to a value other than C<local> (or empty),
-each file's CreateDate is converted from B<pTimeZone> to the host's
-local time before it is used for the output filename, and all the
-other EXIF time settings.
+When set to a value other than C<local>, each file's CreateDate is
+converted from B<pTimeZone> to the host's local time before it is used
+for the output filename, and all the other EXIF time settings.
 
 Pattern: C<UTC[+-]H> or C<UTC[+-]H:MM>.  The C<UTC> prefix is
 case-insensitive (C<utc-1> is accepted).
@@ -383,7 +382,7 @@ vid-tag looks for and assigns to its internal C<gp*> globals.
     City="..."                   # pCity             (-c)
     Title="..."                  # pEventTitle       (-E)
     Keyword="word, word"         # pKeyword          (-k)
-    TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z) - optional
+    TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z)
     Extra["FILE1"]="extra title for FILE1"   # optional, per-file
     Extra["FILE2"]="extra title for FILE2"   # ...
 
@@ -399,14 +398,9 @@ unaffected.
 The append rule: a single space follows the title's trailing '.', then
 the "extra" text, then a closing '.'.
 
-B<TimeZone> is optional.  Omit (or set to C<"local">) to disable the
-CreateDate timezone conversion.  See the B<-z> option for the format
-and semantics.
-
 When vid-tag exits, it rewrites F<./vid-tag.conf> with the final
 effective values (defaults + previous conf + any command-line
-overrides), so the next run will only need the file list (and B<-e>
-if you want a different event).
+overrides), so the next run will only need the file list.
 
 =head1 RETURN VALUE
 
@@ -661,7 +655,7 @@ fSetGlobals() {
     gpFilePat=${gpFilePat:-'%d_%e_%p_%f'}
     gpNameLong=${gpNameLong:-"TBD"}
     gpNameShort=${gpNameShort:-"TBD"}
-    gpTimeZone=${gpTimeZone:-""}
+    gpTimeZone=${gpTimeZone:-"local"}
     gpTitlePat=${gpTitlePat:-'%D, %c, %E, by %P.'}
 
     # -------------------
@@ -717,15 +711,14 @@ fLoadConf() {
     # default values.
     #
     # The conf file uses these top-level bash variables:
-    #     Caption    Copyright  FilePat   NameLong  NameShort  TitlePat
-    #     Event      City       Title     Keyword   TimeZone (optional)
-    #     Extra[...]                                (optional, per-file)
+    # Caption, Copyright, FilePat, NameLong, NameShort, TitlePat,
+    # Event, City Title, Keyword, TimeZone
+    # Extra[...] (optional, per-file)
     #
     # After sourcing, the values are assigned to the corresponding
     # internal gp* variables; the conf-file variables themselves are
     # NOT used directly elsewhere in the script.
     local tKey
-    local tRC
 
     if [[ ! -f "$gpConfLocal" ]]; then
         fLog -p info \
@@ -735,14 +728,14 @@ fLoadConf() {
         return 0
     fi
 
-    # ----- Syntax check before sourcing -----
+    # Syntax check before sourcing
     if ! bash -n "$gpConfLocal"; then
-        fError -m "Syntax error in $gpConfLocal (bash -n returned $tRC)" -l $LINENO
+        fError -m "Syntax error in $gpConfLocal" -l $LINENO
     fi
 
-    # ----- Declare the Extra associative array before sourcing so
-    #       "Extra[KEY]=VALUE" lines in the conf produce an associative
-    #       (not indexed) array. -----
+    # Declare the Extra associative array before sourcing so
+    # "Extra[KEY]=VALUE" lines in the conf produce an associative (not
+    # indexed) array.
     local -A Extra=()
     local Caption=""
     local Copyright=""
@@ -759,9 +752,9 @@ fLoadConf() {
     # shellcheck disable=SC1090
     source "$gpConfLocal"
 
-    # ----- Assign conf-file variables to internal gp* variables.
-    #       An empty conf value falls back to the current gp* value
-    #       (which holds the default set by fSetGlobals). -----
+    # Assign conf-file variables to internal gp* variables.  An empty
+    # conf value falls back to the current gp* value (which holds the
+    # default set by fSetGlobals).
     gpCaption=${Caption:-$gpCaption}
     gpCopyright=${Copyright:-$gpCopyright}
     gpFilePat=${FilePat:-$gpFilePat}
@@ -772,17 +765,16 @@ fLoadConf() {
     gpEventCity=${City:-$gpEventCity}
     gpEventTitle=${Title:-$gpEventTitle}
     gpEventKeyword=${Keyword:-$gpEventKeyword}
-    # TimeZone may be unset; bash -u guard via :-
     gpTimeZone=${TimeZone:-$gpTimeZone}
 
-    # ----- Per-file extras: copy Extra associative array into gExtraMap. -----
+    # Per-file extras: copy Extra associative array into gExtraMap.
     gExtraMap=()
     for tKey in "${!Extra[@]}"; do
         gExtraMap["$tKey"]="${Extra[$tKey]}"
     done
 
-    # ----- Normalise event id (spaces -> underscores, lower-cased by
-    #       the gpEventId declare -l attribute). -----
+    # Normalise event id (spaces -> underscores, lower-cased by
+    # the gpEventId declare -l attribute).
     gpEventId="${gpEventId// /_}"
 
     fLog -p info \
@@ -809,7 +801,7 @@ The file is a bash include with top-level variable assignments:
     City="..."
     Title="..."
     Keyword="..."
-    TimeZone="..."                       (optional)
+    TimeZone="..."
     Extra["FILE.mp4"]="extra title"      (optional, repeat per file)
 
 Steps:
@@ -843,7 +835,9 @@ EOF
 fEscConf() {
     # Escape a string for safe inclusion inside a bash double-quoted
     # string literal: backslash, double-quote, dollar, and backtick.
+
     local tStr="$1"
+
     tStr="${tStr//\\/\\\\}"
     tStr="${tStr//\"/\\\"}"
     tStr="${tStr//\$/\\\$}"
@@ -857,6 +851,7 @@ fSaveConf() {
     # Write the current values of all gp* / gExtraMap globals to the
     # local config file in bash-include format.  See fLoadConf for the
     # format description.
+
     local tKey
 
     fLog -p info -m "Saving local config: $gpConfLocal (event=$gpEventId)" -l $LINENO
@@ -875,9 +870,7 @@ fSaveConf() {
         echo "City=\"$(fEscConf "$gpEventCity")\""
         echo "Title=\"$(fEscConf "$gpEventTitle")\""
         echo "Keyword=\"$(fEscConf "$gpEventKeyword")\""
-        if [[ -n "$gpTimeZone" ]]; then
-            echo "TimeZone=\"$(fEscConf "$gpTimeZone")\""
-        fi
+        echo "TimeZone=\"$(fEscConf "$gpTimeZone")\""
         # Per-file extras - skipped if gExtraMap is empty.
         if [[ ${#gExtraMap[@]} -gt 0 ]]; then
             # Sort keys for deterministic output (helpful for diff/round-trip).
@@ -976,9 +969,9 @@ fValidate() {
         fError -m "-t pTitlePat is missing % options" -l $LINENO
     fi
 
-    # TimeZone format check.  Empty or "local" means no conversion.
+    # TimeZone format check.  "local" means no conversion.
     # Valid format: "UTC[+-]H[:MM]" (case-insensitive on UTC).
-    if [[ -n "$gpTimeZone" && "$gpTimeZone" != "local" ]]; then
+    if [[ "$gpTimeZone" != "local" ]]; then
         if [[ ! "$gpTimeZone" =~ ^[Uu][Tt][Cc][+-][0-9]{1,2}(:[0-9]{2})?$ ]]; then
             fError -m "Invalid TimeZone: $gpTimeZone (expected UTC[+-]H[:MM] or 'local')" -l $LINENO
         fi
@@ -1014,20 +1007,21 @@ fConvertTimeZone() {
     # Given an exiftool date string "YYYY:MM:DD HH:MM:SS", return the
     # same string converted from gpTimeZone to local time.
     #
-    # When gpTimeZone is empty or "local", the input is echoed back
-    # unchanged - the caller does not need to special-case the no-op.
+    # When gpTimeZone is "local", the input is echoed back unchanged -
+    # the caller does not need to special-case the no-op.
     #
     # The 'date' command's "TZ=..." date-string prefix is used so that
     # POSIX TZ semantics apply: e.g. gpTimeZone="utc-1" represents a
     # zone 1 hour AHEAD of UTC (just as TZ="UTC-1" does in the env).
     # The output is in the host's local time, in exiftool's format.
-    local pRaw="$1"
     
+    local pRaw="$1"
+
     local tDate
     local tFixed
     local tTime
 
-    if [[ -z "$gpTimeZone" || "$gpTimeZone" = "local" ]]; then
+    if [[ "$gpTimeZone" = "local" ]]; then
         echo "$pRaw"
         return 0
     fi
@@ -1608,7 +1602,7 @@ fProcessFile() {
         -Description="$gpCaption"
         -ImageDescription="$gpCaption"
     )
-    if [[ -n "$gpTimeZone" && "$gpTimeZone" != "local" ]]; then
+    if [[ "$gpTimeZone" != "local" ]]; then
         tCmd+=(
             -DateTimeOriginal="$gFileDate"
             -CreateDate="$gFileDate"
@@ -1704,10 +1698,10 @@ applies fConvertTimeZone so gFileDate* globals hold local time.
 =internal-item 2. Expand file-name and title patterns (fApplyPattern).
 
 =internal-item 3. Run a single exiftool call to rename and set all
-metadata.  When gpTimeZone is active (non-empty and not "local"), the
-seven date/time exif fields (DateTimeOriginal, CreateDate, ModifyDate,
-TrackCreateDate, TrackModifyDate, MediaCreateDate, MediaModifyDate) are
-also written with the converted local time so the file metadata is
+metadata.  When gpTimeZone is active (not "local"), the seven
+date/time exif fields (DateTimeOriginal, CreateDate, ModifyDate,
+TrackCreateDate, TrackModifyDate, MediaCreateDate, MediaModifyDate)
+are also written with the converted local time so the file metadata is
 consistent with the renamed path.
 
 =internal-item 4. Set filesystem mtime to the converted CreateDate (touch).

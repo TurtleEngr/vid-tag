@@ -217,7 +217,7 @@ setUp() {
     gpTitlePat='%D, %c, %E, by %P.'
     gpNameLong="TBD"
     gpNameShort="TBD"
-    gpTimeZone=""
+    gpTimeZone="local"
     gpNoExec=0
     gpVerbose=0
     gpDebug=0
@@ -1261,22 +1261,18 @@ testConvertDate_TestFiles() {
 
 # --------------------------------
 testConvertTimeZone_NoConversion() {
-    # When gpTimeZone is empty or "local", the input must be returned
+    # When gpTimeZone is "local", the input must be returned
     # verbatim with no shelling out to date(1).
     local tResult
 
-    gpTimeZone=""
-    tResult=$(fConvertTimeZone "2026:05:02 01:00:00")
-    assertEquals "$LINENO empty"     "2026:05:02 01:00:00" "$tResult"
-
     gpTimeZone="local"
-    tResult=$(fConvertTimeZone "2026:05:02 01:00:00")
-    assertEquals "$LINENO local"     "2026:05:02 01:00:00" "$tResult"
+    tResult=$(fConvertTimeZone   "2026:05:02 01:00:00")
+    assertEquals "$LINENO local" "2026:05:02 01:00:00" "$tResult"
 
     # Round-trip a zero-padded date too
-    gpTimeZone=""
-    tResult=$(fConvertTimeZone "2016:11:21 00:20:59")
-    assertEquals "$LINENO 0107"      "2016:11:21 00:20:59" "$tResult"
+    gpTimeZone="local"
+    tResult=$(fConvertTimeZone  "2016:11:21 00:20:59")
+    assertEquals "$LINENO 0107" "2016:11:21 00:20:59" "$tResult"
     return 0
 } # testConvertTimeZone_NoConversion
 
@@ -1360,8 +1356,8 @@ testConvertTimeZone_FormatVariants() {
 
 # --------------------------------
 testConvertTimeZone_BadFormat() {
-    # Anything that is not empty, "local", or matches UTC[+-]H[:MM]
-    # should trigger fError.  Capture in a subshell because fError exits.
+    # Anything that is not "local", or matches UTC[+-]H[:MM] should
+    # trigger fError.  Capture in a subshell because fError exits.
     local tResult
 
     gpTimeZone="garbage"
@@ -1401,7 +1397,7 @@ testReadFileDate_TimeZoneSlow() {
     export TZ="America/Los_Angeles"
 
     # ---- Baseline: no conversion ----
-    gpTimeZone=""
+    gpTimeZone="local"
     fReadFileDate "MVI_0107.MP4"
     assertEquals "$LINENO baseline gFileDate"  "2016:11:21 00:20:59" "$gFileDate"
     assertEquals "$LINENO baseline short"      "2016-11-21"          "$gFileDateShort"
@@ -1807,26 +1803,6 @@ testSaveConf_RoundTrip() {
     gpConfLocal="./vid-tag.conf"
     return 0
 } # testSaveConf_RoundTrip
-
-# --------------------------------
-testSaveConf_NoTimeZoneWhenEmpty() {
-    # When gpTimeZone is empty, fSaveConf must not emit a TimeZone= line.
-    local tConf="$cTmp1"
-
-    rm -f "$tConf"
-    gpConfLocal="$tConf"
-    gpEventId="notz"
-    gpTimeZone=""
-
-    fSaveConf >/dev/null 2>&1
-
-    grep -q '^TimeZone=' "$tConf"
-    assertFalse "$LINENO no TimeZone line" "[ $? -eq 0 ]"
-
-    gpConfLocal="./vid-tag.conf"
-    return 0
-} # testSaveConf_NoTimeZoneWhenEmpty
-
 
 # --------------------------------
 testGetOpt() {

@@ -9,6 +9,9 @@
 SHELL = /bin/bash
 cVer = 1.3.1
 
+cRelServer = moria.whyayh.com
+cRelDIr = /rel/released/software/own/vid-tag/
+
 # --------------------
 # Main targets
 
@@ -18,6 +21,7 @@ usage :
 	@echo 'dist-clean - remove all built files'
 	@echo 'update     - check for newer dependent files'
 	@echo 'build      - Update README and update cVer in files'
+	@echo 'get-test   - Get video files for tests 4.4GB'
 	@echo 'test       - Quick tests (about 7sec)'
 	@echo 'test-all   - Test with video files; slow (about 16min)'
 	@echo 'package    - create the package zip file'
@@ -41,13 +45,17 @@ build : README.md
 	done
 	-git ci -am Updated
 
-test :
+get-test : pkg
+	cd pkg; curl -O https://$(cRelServer)$(cRelDIr)/vid-tag-test-input.zip
+	unzip pkg/vid-tag-test-input.zip
+
+test : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	./vid-tag.test -T fast
 	./vid-tag -n -e testevent MVI_0107.MP4  MVI_0110.MP4  MVI_0746.MP4
 	@echo "Review: vid-tag.conf"
 	@echo "Review: vid-tag-example.txt"
 
-test-all :
+test-all : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	./vid-tag.test -T all
 
 package : build pkg pkg/vid-tag-$(cVer).zip
@@ -64,15 +72,15 @@ release : package
 	git push origin main
 	git co develop
 	read -p "You must have a user on moria. ^c to quit"
-	-ssh moria mkdir --mode=755 -p /rel/released/software/own/vid-tag/
+	-ssh $(cRelServer) mkdir --mode=755 -p $(cRelDIr)
 	rsync -aP pkg/vid-tag-$(cVer).zip \
-		moria:/rel/released/software/own/vid-tag/
+		$(cRelServer):$(cRelDIr)
 
 release-test : package-test
 	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP pkg/vid-tag-test-$(cVer).zip \
 		pkg/vid-tag-test-input.zip \
-		moria:/rel/released/software/own/vid-tag/
+		$(cRelServer):$(cRelDIr)
 
 install : build
 	cp -i vid-tag vid-tag.inc vid-tag.test ~/bin/
@@ -110,13 +118,13 @@ pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 
 MVI_0107.MP4 :
 	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
+	rsync -aP $(cRelServer):/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0110.MP4 :
 	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP moria:/home/video/ver/video/studio/portfolio/raw/$@ $@
+	rsync -aP $(cRelServer):/home/video/ver/video/studio/portfolio/raw/$@ $@
 
 MVI_0746.MP4 :
 	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP moria:/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@
+	rsync -aP $(cRelServer):/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@
 

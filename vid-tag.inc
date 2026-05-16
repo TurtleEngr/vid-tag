@@ -96,7 +96,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 =head1 SYNOPSIS
 
-First run. Create config file: F<./vid-tag.conf>
+First run. Create initial config file: F<./vid-tag.conf>
 
     vid-tag -n -e "pEventId" [File1 File2 ...]
 
@@ -373,7 +373,7 @@ if the debug level is greater than the debug message's debug level.
 =head2 Config File Format
 
 This is the config file (F<./vid-tag.conf>) format.
-The value of C<$gpEventId> is the primary key.
+C<-e pEventId> is the primary key.
 
     [vid-tag "com"]
         file-pat   = %d_%e_%p_%f (pFilePatern)

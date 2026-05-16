@@ -1,6 +1,6 @@
 set -u
 
-export cVer=1.3.4
+export cVer=2.1
 export cBin
 export cExampleFile
 export cOutputDir
@@ -40,15 +40,11 @@ declare -ag gExampleTitles
 declare -ag gExampleCreateDates
 declare -ig gExampleIdx
 
-# Per-file extra-title map populated by fLoadExtras from the
-# [vid-tag "extra"] section of $gpConfLocal.  Keys are file basenames
+# Per-file extra-title map populated by fLoadConf from "Extra[...]"
+# bash array assignments in $gpConfLocal.  Keys are file basenames
 # (exact, case-sensitive); values are the text appended to the EXIF
 # Title for matching files.
 declare -Ag gExtraMap
-# Raw text of the [vid-tag "extra"] block, captured by fLoadExtras
-# and re-emitted by fSaveExtras.  Used to round-trip the section
-# unchanged across git-config based reads/writes.
-export gExtraSection
 
 # ========================================
 # Script Functions
@@ -232,45 +228,45 @@ pEventId is not found, then it will be added to F<./vid-tag.conf>.
 The value will be changed to lower-case and any spaces will be changed
 to '_'
 
-Pattern token: B<%e>.  Config key: C<event.tag>. Required: "pEventId"
+Pattern token: B<%e>.  Config var: C<Event>. Required: "pEventId"
 
 =item B<-E "pEventTitle">
 
 Long event name used in the title.
 
-Pattern token: B<%E>.  Config key: C<event.title>. Default: "Long
+Pattern token: B<%E>.  Config var: C<Title>. Default: "Long
 event description."
 
 =item B<-c "pCity">
 
 City name.
 
-Pattern token: B<%c>.  Config key: C<event.city>. Default: "city name"
+Pattern token: B<%c>.  Config var: C<City>. Default: "city name"
 
 =item B<-C "pCaption">
 
 Caption / description metadata.
 
-Config key: C<com.caption>. Default: "Copyright TERMS"
+Config var: C<Caption>. Default: "Copyright TERMS"
 
 =item B<-p "pInitials">
 
 Photographer's initials / short name (no spaces).
 
-Pattern token: B<%p>.  Config key: C<com.name-short>.
+Pattern token: B<%p>.  Config var: C<NameShort>.
 
 =item B<-P "pName">
 
 Photographer's full name.
 
-Pattern token: B<%P>.  Config key: C<com.name-long>. Default: First
+Pattern token: B<%P>.  Config var: C<NameLong>. Default: First
 Last
 
 =item B<-R "pCopyright">
 
 Copyright stamp.
 
-Config key: C<com.copyright> Default: "Copyright NAME YYYY"
+Config var: C<Copyright> Default: "Copyright NAME YYYY"
 
 =item B<-f "pFilePattern">
 
@@ -278,24 +274,24 @@ Output file-name pattern.  Usually you will only use the lowercase
 pattern options, because they should not have any spaces or special
 characters in them.
 
-Config key: C<com.file-pat>. Default: C<%d_%e_%p_%f>.
+Config var: C<FilePat>. Default: C<%d_%e_%p_%f>.
 
 =item B<-t "pTitlePattern">
 
 Title pattern.  Usually you will use the uppercase pattern options,
 but the lowercase options can be used.
 
-Config key: C<com.title-pat>. Default: C<%D, %c, %E, by %P.>
+Config var: C<TitlePat>. Default: C<%D, %c, %E, by %P.>
 
 =item B<-k "pKeyword">
 
 Comma-separated keyword list.
 
-Config key: C<event.keyword>. Default: "PBP, event"
+Config var: C<Keyword>. Default: "PBP, event"
 
 =item B<-z "pTimeZone">
 
-Config key: C<event.time-zone>.  Default: C<local> (no conversion).
+Config var: C<TimeZone>.  Default: C<local> (no conversion).
 
 When set to a value other than C<local> (or empty),
 each file's CreateDate is converted from B<pTimeZone> to the host's
@@ -372,37 +368,45 @@ if the debug level is greater than the debug message's debug level.
 
 =head2 Config File Format
 
-This is the config file (F<./vid-tag.conf>) format.
-C<-e pEventId> is the primary key.
+This is the config file (F<./vid-tag.conf>) format.  The file is a
+B<bash include file>: each line is a bash variable assignment that is
+sourced by vid-tag at startup.  The variables have specific names that
+vid-tag looks for and assigns to its internal C<gp*> globals.
 
-    [vid-tag "com"]
-        file-pat   = %d_%e_%p_%f (pFilePatern)
-        title-pat  = %D, %c, %E, by %P. (pTitlePattern)
-        name-long  = Photographer Name (pName)
-        name-short = Initials (pInitial)
-        copyright  = pCopyright
-        caption    = pCaption
-    [vid-tag "pEventId"]
-        title      = Long Event Title (pEventTitle)
-        city       = pCity
-        keyword    = word, word (pKeyword)
-        time-zone  = UTC[+-]H[:MM] | local (pTimeZone) - optional
-    [vid-tag "extra"]
-        FILE1      = extra title text for FILE1 - optional
-        FILE2      = extra title text for FILE2 - optional
-        ...
+    Caption="..."                # pCaption          (-C)
+    Copyright="..."              # pCopyright        (-R)
+    FilePat="%d_%e_%p_%f"        # pFilePattern      (-f)
+    NameLong="..."               # pName             (-P)
+    NameShort="..."              # pInitials         (-p)
+    TitlePat="%D, %c, %E, by %P." # pTitlePattern    (-t)
+    Event="pEventId"             # pEventId          (-e)
+    City="..."                   # pCity             (-c)
+    Title="..."                  # pEventTitle       (-E)
+    Keyword="word, word"         # pKeyword          (-k)
+    TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z) - optional
+    Extra["FILE1"]="extra title for FILE1"   # optional, per-file
+    Extra["FILE2"]="extra title for FILE2"   # ...
 
-The B<[vid-tag "extra"]> section is optional.  Each key is the exact
-basename of an input file (case-sensitive); the value is the text that
-will be appended to that file's EXIF Title.  Files without a matching
-key are unaffected.
+Because the file is just bash, you can include comments (lines
+starting with C<#>) and may even compute values dynamically.  The
+syntax is verified with C<bash -n> before the file is sourced.
+
+The B<Extra> entries are optional.  Each key is the exact basename of
+an input file (case-sensitive); the value is the text that will be
+appended to that file's EXIF Title.  Files without a matching key are
+unaffected.
 
 The append rule: a single space follows the title's trailing '.', then
 the "extra" text, then a closing '.'.
 
-time-zone - is optional.  Omit (or set to C<local>) to disable the
+B<TimeZone> is optional.  Omit (or set to C<"local">) to disable the
 CreateDate timezone conversion.  See the B<-z> option for the format
 and semantics.
+
+When vid-tag exits, it rewrites F<./vid-tag.conf> with the final
+effective values (defaults + previous conf + any command-line
+overrides), so the next run will only need the file list (and B<-e>
+if you want a different event).
 
 =head1 RETURN VALUE
 
@@ -466,7 +470,7 @@ the testCli*Slow tests.
 
 Required: Linux OS (see CAVEATS for Windows and MacOS)
 
-Required: bash, exiftool, git config, ffmpeg, sed
+Required: bash, exiftool, ffmpeg, sed
 
 Optional: vid-tag.test
 
@@ -556,7 +560,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3.4
+cVer=2.1
 
 =cut
 
@@ -572,31 +576,36 @@ EOF
 
 Select the type of help output. See -h and -H options.
 
-=internal-head3 Config Key to Variable Map
+=internal-head3 Config Variable to Internal Variable Map
 
-These are internal variables.
+The conf file (F<./vid-tag.conf>) uses these top-level bash variables.
+fLoadConf assigns each to the corresponding internal C<gp*> global
+after sourcing the file.  The conf-file variable names are NEVER
+referenced directly anywhere else in the script.
 
-    Config key        Variable
-    ---------         --------
-    com.caption       gpCaption
-    com.copyright     gpCopyright
-    com.file-pat      gpFilePat
-    com.name-long     gpNameLong
-    com.name-short    gpNameShort
-    com.title-pat     gpTitlePat
-    event.tag         gpEventId
-    event.city        gpEventCity
-    event.keyword     gpEventKeyword
-    event.time-zone   gpTimeZone
-    event.title       gpEventTitle
-    extra.<FILE>      gExtraMap[<FILE>]   (per-file title append)
+    Conf-file var       Internal variable
+    -------------       -----------------
+    Caption             gpCaption
+    Copyright           gpCopyright
+    FilePat             gpFilePat
+    NameLong            gpNameLong
+    NameShort           gpNameShort
+    TitlePat            gpTitlePat
+    Event               gpEventId
+    City                gpEventCity
+    Keyword             gpEventKeyword
+    TimeZone            gpTimeZone
+    Title               gpEventTitle
+    Extra[<FILE>]       gExtraMap[<FILE>]   (per-file title append)
 
-=internal-head3 Extra Processing
+=internal-head3 Per-file Extras
 
-The B<extra> keys typically contain '.' (e.g. "MVI_0107.MP4"), which
-B<git config> cannot parse.  For this reason, the section is read and
-written by an internal awk-based parser; it round-trips through
-F<vid-tag.conf> unchanged on every run.  Edit it by hand.
+The B<Extra> entries are stored as a bash associative array indexed
+by exact, case-sensitive file basenames (typically containing '.',
+e.g. "MVI_0107.MP4").  Because the conf file is a bash include, no
+special parser is needed: the C<Extra[FILE]=value> lines are simply
+sourced.  fLoadConf declares C<-A Extra> before sourcing so that
+indices are treated as associative keys.
 
 =internal-cut
 
@@ -626,7 +635,7 @@ fSetGlobals() {
     fComSetGlobals
 
     # -------------------
-    # Config file locations for fComGetConfig / fComSetConfig
+    # Local config file path (sourced as a bash include by fLoadConf)
     gpConfLocal="./vid-tag.conf"
 
     # -------------------
@@ -674,14 +683,13 @@ fSetGlobals() {
     gExampleIdx=0
 
     # -------------------
-    # Per-file extras: populated by fLoadExtras, written back by
-    # fSaveExtras.  Map is reset here; section text starts empty.
+    # Per-file extras: populated by fLoadConf.  Reset to empty here so
+    # repeated calls (in tests) don't accumulate stale entries.
     gExtraMap=()
-    gExtraSection=""
 
     # -------------------
     # Required and optional external programs
-    fComCheckDeps "bash exiftool git ffmpeg sed" "cat"
+    fComCheckDeps "bash exiftool ffmpeg sed" "cat"
 
     return
 
@@ -704,83 +712,180 @@ EOF
 
 # --------------------------------
 fLoadConf() {
-    # Read event-specific overrides from the local config file.
-    # The section prefix is the current value of gpEventId, which has
-    # already been set from the global conf (and possibly pre-scanned
-    # from the command line via -e).
-    local tId
+    # Source the local config file (bash include format).  If the file
+    # does not exist, call fSaveConf to create it with the current
+    # default values.
+    #
+    # The conf file uses these top-level bash variables:
+    #     Caption    Copyright  FilePat   NameLong  NameShort  TitlePat
+    #     Event      City       Title     Keyword   TimeZone (optional)
+    #     Extra[...]                                (optional, per-file)
+    #
+    # After sourcing, the values are assigned to the corresponding
+    # internal gp* variables; the conf-file variables themselves are
+    # NOT used directly elsewhere in the script.
+    local tKey
+    local tRC
 
     if [[ ! -f "$gpConfLocal" ]]; then
-        fLog -p info -m "Local config not found: $gpConfLocal" -l $LINENO
+        fLog -p info \
+            -m "Local config not found: $gpConfLocal - creating with defaults" \
+            -l $LINENO
+        fSaveConf
         return 0
     fi
 
-    if [[ "$gpEventId" = "tbd" || -z "$gpEventId" ]]; then
-        fError -m "gpEventId not set; cannot read local config sections." -l $LINENO
+    # ----- Syntax check before sourcing -----
+    if ! bash -n "$gpConfLocal"; then
+        fError -m "Syntax error in $gpConfLocal (bash -n returned $tRC)" -l $LINENO
     fi
 
-    gpCaption=$(      fComGetConfig -l -k "$cName.com.caption"    -d "$gpCaption")
-    gpCopyright=$(    fComGetConfig -l -k "$cName.com.copyright"  -d "$gpCopyright")
-    gpFilePat=$(      fComGetConfig -l -k "$cName.com.file-pat"   -d "$gpFilePat")
-    gpNameLong=$(     fComGetConfig -l -k "$cName.com.name-long"  -d "$gpNameLong")
-    gpNameShort=$(    fComGetConfig -l -k "$cName.com.name-short" -d "$gpNameShort")
-    
-    gpTitlePat=$(     fComGetConfig -l -k "$cName.com.title-pat" -d "$gpTitlePat")
+    # ----- Declare the Extra associative array before sourcing so
+    #       "Extra[KEY]=VALUE" lines in the conf produce an associative
+    #       (not indexed) array. -----
+    local -A Extra=()
+    local Caption=""
+    local Copyright=""
+    local FilePat=""
+    local NameLong=""
+    local NameShort=""
+    local TitlePat=""
+    local Event=""
+    local City=""
+    local Title=""
+    local Keyword=""
+    local TimeZone=""
 
-    # event.tag is the canonical source for gpEventId in local conf
-    tId=$(fComGetConfig -l -k "$cName.$gpEventId.title")
-    if [[ -z "$tId" ]]; then
-        fLog -p warn -m "Event $gpEventId not found, it will be added to $gpConfLocal" -l $LINENO
-    fi
+    # shellcheck disable=SC1090
+    source "$gpConfLocal"
 
-    gpEventTitle=$(   fComGetConfig -l -k "$cName.$gpEventId.title"     -d "$gpEventTitle")
-    gpEventCity=$(    fComGetConfig -l -k "$cName.$gpEventId.city"      -d "$gpEventCity")
-    gpEventKeyword=$( fComGetConfig -l -k "$cName.$gpEventId.keyword"   -d "$gpEventKeyword")
-    gpTimeZone=$(     fComGetConfig -l -k "$cName.$gpEventId.time-zone" -d "$gpTimeZone")
+    # ----- Assign conf-file variables to internal gp* variables.
+    #       An empty conf value falls back to the current gp* value
+    #       (which holds the default set by fSetGlobals). -----
+    gpCaption=${Caption:-$gpCaption}
+    gpCopyright=${Copyright:-$gpCopyright}
+    gpFilePat=${FilePat:-$gpFilePat}
+    gpNameLong=${NameLong:-$gpNameLong}
+    gpNameShort=${NameShort:-$gpNameShort}
+    gpTitlePat=${TitlePat:-$gpTitlePat}
+    gpEventId=${Event:-$gpEventId}
+    gpEventCity=${City:-$gpEventCity}
+    gpEventTitle=${Title:-$gpEventTitle}
+    gpEventKeyword=${Keyword:-$gpEventKeyword}
+    # TimeZone may be unset; bash -u guard via :-
+    gpTimeZone=${TimeZone:-$gpTimeZone}
 
+    # ----- Per-file extras: copy Extra associative array into gExtraMap. -----
+    gExtraMap=()
+    for tKey in "${!Extra[@]}"; do
+        gExtraMap["$tKey"]="${Extra[$tKey]}"
+    done
+
+    # ----- Normalise event id (spaces -> underscores, lower-cased by
+    #       the gpEventId declare -l attribute). -----
     gpEventId="${gpEventId// /_}"
+
+    fLog -p info \
+        -m "Loaded config: $gpConfLocal (event=$gpEventId, extras=${#gExtraMap[@]})" \
+        -l $LINENO
     return 0
 
     # shellcheck disable=SC2317
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head2 fLoadLocalConf
+=internal-head2 fLoadConf
 
-Reads the local config file (gpConfLocal, default F<./vid-tag.conf>) using
-fComGetConfig -l.  The section prefix is the current gpEventId value.
+Source the local config file (gpConfLocal, default F<./vid-tag.conf>).
+The file is a bash include with top-level variable assignments:
 
-If the file is absent, or gpEventId is not yet known, the function
-returns silently with a warning.
+    Caption="..."
+    Copyright="..."
+    FilePat="..."
+    NameLong="..."
+    NameShort="..."
+    TitlePat="..."
+    Event="..."
+    City="..."
+    Title="..."
+    Keyword="..."
+    TimeZone="..."                       (optional)
+    Extra["FILE.mp4"]="extra title"      (optional, repeat per file)
+
+Steps:
+
+=internal-over 4
+
+=internal-item 1. If the file does not exist, call fSaveConf to
+create it with the current default values, then return.
+
+=internal-item 2. Verify the syntax with C<bash -n>; on error, fError
+exits the script.
+
+=internal-item 3. Source the file inside a function scope (so the
+conf-file variables are local), then assign each to the corresponding
+gp* internal variable.  Empty conf values leave the gp* value at the
+default set by fSetGlobals.
+
+=internal-item 4. Copy the C<Extra> associative array into gExtraMap.
+
+=internal-back
+
+The conf-file variables are NEVER used directly elsewhere - only the
+gp* / gExtraMap globals.  This isolates the conf-file naming from the
+rest of the script.
 
 =internal-cut
 EOF
 } # fLoadConf
 
 # --------------------------------
+fEscConf() {
+    # Escape a string for safe inclusion inside a bash double-quoted
+    # string literal: backslash, double-quote, dollar, and backtick.
+    local tStr="$1"
+    tStr="${tStr//\\/\\\\}"
+    tStr="${tStr//\"/\\\"}"
+    tStr="${tStr//\$/\\\$}"
+    tStr="${tStr//\`/\\\`}"
+    printf '%s' "$tStr"
+    return 0
+} # fEscConf
+
+# --------------------------------
 fSaveConf() {
-    # Write the current values to the local config file under the
-    # [$gpEventId ...] section.
+    # Write the current values of all gp* / gExtraMap globals to the
+    # local config file in bash-include format.  See fLoadConf for the
+    # format description.
+    local tKey
 
-    if [[ -z "$gpEventId" ]]; then
-        fError -m "Cannot save local config: gpEventId is not set." -l $LINENO
-    fi
+    fLog -p info -m "Saving local config: $gpConfLocal (event=$gpEventId)" -l $LINENO
 
-    fLog -p info -m "Saving local config: $gpConfLocal (tag=$gpEventId)" -l $LINENO
-    fComSetConfig -l -k "$cName.com.caption"     -v "$gpCaption"
-    fComSetConfig -l -k "$cName.com.copyright"   -v "$gpCopyright"
-    fComSetConfig -l -k "$cName.com.file-pat"    -v "$gpFilePat"
-    fComSetConfig -l -k "$cName.com.name-long"   -v "$gpNameLong"
-    fComSetConfig -l -k "$cName.com.name-short"  -v "$gpNameShort"
-    fComSetConfig -l -k "$cName.com.title-pat"   -v "$gpTitlePat"
-
-    fComSetConfig -l -k "$cName.$gpEventId.title"     -v "$gpEventTitle"
-    fComSetConfig -l -k "$cName.$gpEventId.city"      -v "$gpEventCity"
-    fComSetConfig -l -k "$cName.$gpEventId.keyword"   -v "$gpEventKeyword"
-
-    if [[ -n "$gpTimeZone" ]]; then
-       fComSetConfig -l -k "$cName.$gpEventId.time-zone" -v "$gpTimeZone"
-    fi
+    {
+        echo "# vid-tag local config (bash include format)"
+        echo "# Generated by vid-tag $cVer"
+        echo ""
+        echo "Caption=\"$(fEscConf "$gpCaption")\""
+        echo "Copyright=\"$(fEscConf "$gpCopyright")\""
+        echo "FilePat=\"$(fEscConf "$gpFilePat")\""
+        echo "NameLong=\"$(fEscConf "$gpNameLong")\""
+        echo "NameShort=\"$(fEscConf "$gpNameShort")\""
+        echo "TitlePat=\"$(fEscConf "$gpTitlePat")\""
+        echo "Event=\"$(fEscConf "$gpEventId")\""
+        echo "City=\"$(fEscConf "$gpEventCity")\""
+        echo "Title=\"$(fEscConf "$gpEventTitle")\""
+        echo "Keyword=\"$(fEscConf "$gpEventKeyword")\""
+        if [[ -n "$gpTimeZone" ]]; then
+            echo "TimeZone=\"$(fEscConf "$gpTimeZone")\""
+        fi
+        # Per-file extras - skipped if gExtraMap is empty.
+        if [[ ${#gExtraMap[@]} -gt 0 ]]; then
+            # Sort keys for deterministic output (helpful for diff/round-trip).
+            for tKey in $(printf '%s\n' "${!gExtraMap[@]}" | sort); do
+                echo "Extra[\"$(fEscConf "$tKey")\"]=\"$(fEscConf "${gExtraMap[$tKey]}")\""
+            done
+        fi
+    } > "$gpConfLocal"
 
     return 0
 
@@ -788,218 +893,23 @@ fSaveConf() {
     cat <<EOF >/dev/null
 =internal-pod
 
-=internal-head2 fSaveLocalConf
+=internal-head2 fSaveConf
 
-Writes the current effective values of all gp* config variables to the
-local config file (gpConfLocal) under the [$gpEventId ...] sections,
-using fComSetConfig -l.
+Write the current effective values of all gp* config variables and
+gExtraMap entries to the local config file (gpConfLocal) in
+bash-include format (see fLoadConf for the format description).
 
-Called when -s is present on the command line.
+This function replaces the entire conf file; sourcing the file
+produced by fSaveConf must round-trip back to the same gp* /
+gExtraMap values.
+
+Values are escaped via fEscConf so backslashes, double quotes,
+dollar signs, and backticks in any field do not break the bash
+syntax of the written file.
 
 =internal-cut
 EOF
 } # fSaveConf
-
-# --------------------------------
-fLoadExtras() {
-    # Read the [vid-tag "extra"] section from $gpConfLocal and populate
-    # the gExtraMap associative array (keyed by exact, case-sensitive
-    # file basename).  Also save the raw section text in gExtraSection
-    # and STRIP the section from $gpConfLocal so subsequent git-config
-    # based reads/writes (fComGetConfig / fComSetConfig) don't choke on
-    # keys that contain '.' (e.g. "MVI_0107.MP4").
-    #
-    # Round-trip is completed by fSaveExtras which appends the saved
-    # section back to $gpConfLocal at the end of the run.
-    local tLine tKey tValue tTmp
-
-    gExtraMap=()
-    gExtraSection=""
-
-    if [[ ! -f "$gpConfLocal" ]]; then
-        return 0
-    fi
-
-    # Capture the section text verbatim (header + body lines).
-    gExtraSection=$(awk '
-        /^[[:space:]]*\[[[:space:]]*vid-tag[[:space:]]+"extra"[[:space:]]*\]/ {
-            in_sec=1; print; next
-        }
-        /^[[:space:]]*\[/ { in_sec=0 }
-        in_sec { print }
-    ' "$gpConfLocal")
-
-    if [[ -z "$gExtraSection" ]]; then
-        return 0
-    fi
-
-    # Parse "key = value" lines into the map.  Skip the header,
-    # blank lines, and '#' / ';' comments.
-    while IFS= read -r tLine; do
-        [[ "$tLine" =~ ^[[:space:]]*\[ ]] && continue
-        [[ "$tLine" =~ ^[[:space:]]*$ ]]  && continue
-        [[ "$tLine" =~ ^[[:space:]]*[\#\;] ]] && continue
-        if [[ "$tLine" =~ ^[[:space:]]*([^=[:space:]][^=]*[^=[:space:]]|[^=[:space:]])[[:space:]]*=[[:space:]]*(.*)$ ]]; then
-            tKey="${BASH_REMATCH[1]}"
-            tValue="${BASH_REMATCH[2]}"
-            # Trim trailing whitespace from value
-            tValue="${tValue%"${tValue##*[![:space:]]}"}"
-            gExtraMap["$tKey"]="$tValue"
-        fi
-    done <<< "$gExtraSection"
-
-    # Strip the [vid-tag "extra"] section from the file in place so
-    # the rest of the run can use git config without errors.
-    tTmp="${gpConfLocal}.vt$$"
-    awk '
-        /^[[:space:]]*\[[[:space:]]*vid-tag[[:space:]]+"extra"[[:space:]]*\]/ {
-            in_sec=1; next
-        }
-        /^[[:space:]]*\[/ { in_sec=0 }
-        !in_sec { print }
-    ' "$gpConfLocal" > "$tTmp" && mv "$tTmp" "$gpConfLocal"
-
-    fLog -p info -m "Loaded ${#gExtraMap[@]} extra entries from $gpConfLocal" -l $LINENO
-    return 0
-
-    # shellcheck disable=SC2317
-    cat <<EOF >/dev/null
-=internal-pod
-
-=internal-head2 fLoadExtras
-
-Read the [vid-tag "extra"] section from gpConfLocal into the
-gExtraMap associative array.  Each "FILENAME = text" line becomes
-gExtraMap["FILENAME"]="text".  Match against command-line file
-basenames is exact and case-sensitive.
-
-Side effects:
-
-=internal-over 4
-
-=internal-item gExtraMap is reset and populated.
-
-=internal-item gExtraSection holds the original section text
-(header + body) so fSaveExtras can re-emit it unchanged.
-
-=internal-item The [vid-tag "extra"] section is removed from
-gpConfLocal in place.  This is required because git config (used
-by fComGetConfig / fComSetConfig) refuses to parse a file whose
-keys contain '.', and typical filenames such as "MVI_0107.MP4"
-have dotted extensions.
-
-=internal-back
-
-If gpConfLocal does not exist, the function returns silently
-with an empty map and empty section.
-
-=internal-cut
-EOF
-} # fLoadExtras
-
-# --------------------------------
-fSaveExtras() {
-    # Re-attach the [vid-tag "extra"] section to $gpConfLocal.  The
-    # text is whatever fLoadExtras captured at the start of the run,
-    # so the section round-trips unchanged regardless of any other
-    # writes to the file.
-    if [[ -z "$gExtraSection" ]]; then
-        return 0
-    fi
-    if [[ ! -f "$gpConfLocal" ]]; then
-        return 0
-    fi
-
-    # Make sure the file ends with a newline before appending.
-    if [[ -s "$gpConfLocal" && $(tail -c1 "$gpConfLocal" | wc -l) -eq 0 ]]; then
-        echo >> "$gpConfLocal"
-    fi
-    printf '%s\n' "$gExtraSection" >> "$gpConfLocal"
-    return 0
-
-    # shellcheck disable=SC2317
-    cat <<EOF >/dev/null
-=internal-pod
-
-=internal-head2 fSaveExtras
-
-Append the saved gExtraSection (captured by fLoadExtras) back to
-gpConfLocal.  Called once at the end of the script run, after
-fSaveConf has finished writing the git-config-managed sections.
-
-If gExtraSection is empty (no [vid-tag "extra"] section was
-present at load time, or the run started with no conf file), this
-function is a no-op.
-
-=internal-cut
-EOF
-} # fSaveExtras
-
-# --------------------------------
-fPreScanOpts() {
-    # First-pass option scan: extract only -e (event tag)
-    # before loading the local config file.  The full getopts parse in
-    # Main will apply all options after the config files are loaded.
-
-    local OPTIND=1
-    local OPTARG
-    
-    while (( $# > 0 )); do
-        case "$1" in
-            -e)
-                gpEventId="${2// /_}"
-                return 0
-                ;;
-            -h)
-                fUsage long
-                exit 0
-                ;;
-            -H)
-                fUsage $2
-                exit 0
-                ;;
-            -V)
-                echo "vid-tag version: $cVer"
-                exit 0
-                ;;
-            -*)
-                # Unknown flag: skip it and its argument (if present)
-                shift
-                # If the next token isn't another flag, consume it too
-                if [[ "${1-}" != -* && -n "${1-}" ]]; then
-                    shift
-                fi
-                ;;
-            *)
-                shift
-                ;;
-        esac
-    done
-
-    if [[ -z "$gpEventId" ]]; then
-        fError -m "Missing pEventId, see required -e option." -l $LINENO
-    fi
-
-    if [[ ! -f "$gpConfLocal" ]]; then
-        fSaveLocalConf
-    fi
-    return 0
-
-    # shellcheck disable=SC2317
-    cat <<EOF >/dev/null
-=internal-pod
-
-=internal-head2 fPreScanOpts
-
-Scans command-line arguments for -e and -s before the config files are
-loaded.  This ensures that fLoadLocalConf uses the correct event tag
-even when -e is supplied on the command line.
-
-A full option parse is done later in Main after config loading.
-
-=internal-cut
-EOF
-} # fPreScanOpts
 
 # --------------------------------
 fGetOpt() {
@@ -1053,6 +963,12 @@ fValidate() {
         fError -m "Directory ${gpConfLocal%/*} is not writable." -l $LINENO
     fi
 
+    # gpEventId is required.  It may have come from the conf file
+    # (Event="...") or from the -e command-line option.
+    if [[ -z "$gpEventId" ]]; then
+        fError -m "Missing pEventId, see required -e option." -l $LINENO
+    fi
+
     if [[ "${gpFilePat#*%}" = "${gpFilePat}" ]]; then
         fError -m "-t pFilePat is missing % options" -l $LINENO
     fi
@@ -1068,12 +984,7 @@ fValidate() {
         fi
     fi
 
-    if [[ $gpNoExec -ne 0 ]]; then
-        # Don't check the files
-        return 0
-    fi
-
-    if [[ -z "$gpEventFileList" ]]; then
+    if [[ -z "$gpEventFileList" && $gpNoExec -eq 0 ]]; then
         fError -m "No input files given. Use -h for help." -l $LINENO
     fi
 

@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 1.3.4
+cVer = 2.1
 
 cRelServer = moria.whyayh.com
 cRelDIr = /rel/released/software/own/vid-tag/

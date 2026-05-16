@@ -8,7 +8,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 # SYNOPSIS
 
-First run. Create config file: ./vid-tag.conf
+First run. Create config file: `./vid-tag.conf`
 
     vid-tag -n -e "pEventId" [File1 File2 ...]
 
@@ -79,15 +79,15 @@ file list.
 ### First run of vid-tag
 
 - cd to the directory with your video files (or the directory
-where you want ./output/ created).  Copy the vid-tag.conf file from
+where you want ./output/ created).  Copy the `vid-tag.conf` file from
 the install dir. This is optional. If missing a default version will
 be created.
 
         Run: vid-tag -n -e testevent
 
-- That will create or update ./vid-tag.conf and vid-tag-example.txt
-files.
-- You can now edit the vid-tag.conf file, or use the command line
+- That will create or update `./vid-tag.conf` and
+`vid-tag-example.txt` files.
+- You can now edit the `vid-tag.conf` file, or use the command line
 options to update the file. You want to change "testevent" to a short
 ID that will be put in your renamed video files. See the -e option.
 
@@ -97,7 +97,7 @@ ID that will be put in your renamed video files. See the -e option.
 pattern, and the -t option for how you can change the Title pattern.
 - Use the -v option to see some progress information. Use -vv if
 you want to see more progress details.
-- After each run, the vid-tag.conf file is updated with any
+- After each run, the `vid-tag.conf` file is updated with any
 changes, and the `vid-tag-example.txt` file will summarize how the
 files are modified.
 - Between each run you should probably remove everything in the
@@ -114,7 +114,7 @@ time.
 
     Short event tag used in file names. It is also the Id used to access
     the specific event details in the `./vid-tag.conf` file. If the
-    pEventId is not found, then it will be added to `vid-tag.conf`.
+    pEventId is not found, then it will be added to `./vid-tag.conf`.
 
     The value will be changed to lower-case and any spaces will be changed
     to '\_'
@@ -203,7 +203,7 @@ time.
 - **-n**
 
     No-execute / dry-run.  Validate inputs and create config file
-    **./vid-tag.conf**, but do not create output/, rename files, or modify
+    `./vid-tag.conf`, but do not create output/, rename files, or modify
     metadata.
 
 - **-h**
@@ -359,34 +359,64 @@ All of this code is maintained at:
 
     https://github.com/TurtleEngr/vid-tag
 
-The releases are marked with vN.N tags.
+The releases are marked with vM.m.p tags.
+
+## Standard version numbering scheme
+
+vM.m.p tags.
+
+M - major version number. The program may not work with previous
+versions of command line options or config files.
+
+m - minor version number. New features or bug fixes have been added.
+It will probably work with previous versions of command line options
+or config files, but new features might not work with older versions.
+
+p - patch version number. There have only been cosmetic changes. For
+example, typos, documentation changes, and maybe some very minor bug
+fixes.
+
+Any time there is a new "Release," one of these numbers will be
+incremented.
+
+Also if you are looking at this on github, the "development" branch is
+for newer (maybe untested) versions (where the version number will
+likely be different from a released version). The "main" branch is
+where the official released code lives, with the vM.m.p tags.
 
 # CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin
 installed on your Windows PC, and you have install the Required
-packages (and set your PATH env.) this could work. For MacOS you'll
-probably want to install "brew" to get the Required programs.
+packages, definded in the SEE ALSO section, and set your PATH env.,
+this could work. For MacOS you'll probably want to install "brew" to
+get the Required programs.
 
-If you do get this running on Windows or MacOS, let me know, with an
-"issue" report, what you had to do to get it running. For example
-include programs needed, configuration directions, and any changes
-you made to the scripts.
+If you do get this running on Windows or MacOS, please let me know,
+with an "issue" report (label it with "enhancement" or
+"documentation"). What did you do to get it running. For example
+include other programs needed, configuration directions, and any
+changes you made to the scripts. If you know github, fork the vid-tag
+repo, add your changes, then send me a "pull" request, to the
+"develop" branch.
 
 # DIAGNOSTICS
 
-This tool comes with a test script to verify vid-tag script is working
-OK.  Download these files:
+This tool comes with a test script to verify the vid-tag script is
+working OK.  Download these files (the VER should match vid-tag's
+VER):
 
     vid-tag-test-VER.zip
     vid-tag-test-input.zip (4.5G)
 
-from: https://moria.whyayh.com/rel/released/software/own/vid-tag/
+From: https://moria.whyayh.com/rel/released/software/own/vid-tag/
 
 Unzip vid-tag-test-VER.zip to the install dir.
 
 Unzip vid-tag-test-input.zip to a "test" directory. In the test
-directory run vid-tag.test.
+directory run:
+
+    ./vid-tag.test -T all
 
 If you don't have space for the vid-tag-test-input.zip files, just use
 the "fast" test option for vid-tag.test. For example:
@@ -397,6 +427,8 @@ the "fast" test option for vid-tag.test. For example:
 
 Report bugs at: https://github.com/TurtleEngr/vid-tag/issues
 
+Always include the version number of the script you were using.
+
 # AUTHOR
 
 Turtle Engineer
@@ -405,4 +437,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3
+cVer=1.3.4

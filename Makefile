@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 1.3.1
+cVer = 1.3.4
 
 cRelServer = moria.whyayh.com
 cRelDIr = /rel/released/software/own/vid-tag/
@@ -39,8 +39,8 @@ dist-clean : clean
 
 update check : check-bash-com.inc check-bash-com.test check-shunit2.1
 
-build : README.md
-	for i in vid-tag vid-tag.inc vid-tag.test; do \
+build : README.html
+	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
 	-git ci -am Updated
@@ -59,21 +59,21 @@ test-all : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	./vid-tag.test -T all
 
 package : build pkg pkg/vid-tag-$(cVer).zip
-	-git push --tags origin develop
+	-git push --tags --force origin develop
 
 package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
 	-git push --tags origin develop
 
 release : package
 	git tag -f v$(cVer)
-	git push --tags origin develop
+	git push --tags --force origin develop
 	git co main
 	git merge develop
 	git push origin main
 	git co develop
 	read -p "You must have a user on moria. ^c to quit"
 	-ssh $(cRelServer) mkdir --mode=755 -p $(cRelDIr)
-	rsync -aP pkg/vid-tag-$(cVer).zip \
+	rsync -aP README.html pkg/vid-tag-$(cVer).zip \
 		$(cRelServer):$(cRelDIr)
 
 release-test : package-test
@@ -88,12 +88,12 @@ install : build
 # --------------------
 # Single targets
 
-README.md : vid-tag vid-tag.inc
+README.md : vid-tag vid-tag.inc Makefile
 	-./vid-tag -H md >README.md
 
-README.html : README.md
-	markdown $? >$@
-	tidy -m -config ./tidyxhtml.conf $@
+README.html : README.md Makefile
+	-markdown $? >$@
+	-tidy -m -config ./tidyxhtml.conf $@
 
 check-bash-com.inc : ~/bin/bash-com.inc
 	-diff $? bash-com.inc | grep -v Revision:
@@ -108,7 +108,7 @@ pkg :
 	mkdir -p $@
 
 pkg/vid-tag-$(cVer).zip :
-	zip $@ vid-tag vid-tag.inc vid-tag.conf bash-com.inc LICENSE
+	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
 
 pkg/vid-tag-test-$(cVer).zip :
 	zip $@ vid-tag.test bash-com.test shunit2.1

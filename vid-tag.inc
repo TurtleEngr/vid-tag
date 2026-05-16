@@ -1,6 +1,6 @@
 set -u
 
-export cVer=1.3.1
+export cVer=1.3.4
 export cBin
 export cExampleFile
 export cOutputDir
@@ -476,34 +476,64 @@ All of this code is maintained at:
 
     https://github.com/TurtleEngr/vid-tag
 
-The releases are marked with vN.N tags.
+The releases are marked with vM.m.p tags.
+
+=head2 Standard version numbering scheme
+
+vM.m.p tags.
+
+M - major version number. The program may not work with previous
+versions of command line options or config files.
+
+m - minor version number. New features or bug fixes have been added.
+It will probably work with previous versions of command line options
+or config files, but new features might not work with older versions.
+
+p - patch version number. There have only been cosmetic changes. For
+example, typos, documentation changes, and maybe some very minor bug
+fixes.
+
+Any time there is a new "Release," one of these numbers will be
+incremented.
+
+Also if you are looking at this on github, the "development" branch is
+for newer (maybe untested) versions (where the version number will
+likely be different from a released version). The "main" branch is
+where the official released code lives, with the vM.m.p tags.
 
 =head1 CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin
 installed on your Windows PC, and you have install the Required
-packages (and set your PATH env.) this could work. For MacOS you'll
-probably want to install "brew" to get the Required programs.
+packages, definded in the SEE ALSO section, and set your PATH env.,
+this could work. For MacOS you'll probably want to install "brew" to
+get the Required programs.
 
-If you do get this running on Windows or MacOS, let me know, with an
-"issue" report, what you had to do to get it running. For example
-include programs needed, configuration directions, and any changes
-you made to the scripts.
+If you do get this running on Windows or MacOS, please let me know,
+with an "issue" report (label it with "enhancement" or
+"documentation"). What did you do to get it running. For example
+include other programs needed, configuration directions, and any
+changes you made to the scripts. If you know github, fork the vid-tag
+repo, add your changes, then send me a "pull" request, to the
+"develop" branch.
 
 =head1 DIAGNOSTICS
 
-This tool comes with a test script to verify vid-tag script is working
-OK.  Download these files:
+This tool comes with a test script to verify the vid-tag script is
+working OK.  Download these files (the VER should match vid-tag's
+VER):
 
     vid-tag-test-VER.zip
     vid-tag-test-input.zip (4.5G)
 
-from: https://moria.whyayh.com/rel/released/software/own/vid-tag/
+From: https://moria.whyayh.com/rel/released/software/own/vid-tag/
 
 Unzip vid-tag-test-VER.zip to the install dir.
 
 Unzip vid-tag-test-input.zip to a "test" directory. In the test
-directory run vid-tag.test.
+directory run:
+
+    ./vid-tag.test -T all
 
 If you don't have space for the vid-tag-test-input.zip files, just use
 the "fast" test option for vid-tag.test. For example:
@@ -513,6 +543,8 @@ the "fast" test option for vid-tag.test. For example:
 =head1 BUGS
 
 Report bugs at: https://github.com/TurtleEngr/vid-tag/issues
+
+Always include the version number of the script you were using.
 
 =for comment =head1 RESTRICTIONS
 
@@ -524,7 +556,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3.1
+cVer=1.3.4
 
 =cut
 

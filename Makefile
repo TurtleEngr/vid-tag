@@ -79,8 +79,10 @@ release : package
 release-test : package-test
 	read -p "You must have a user on moria. ^c to quit"
 	rsync -aP pkg/vid-tag-test-$(cVer).zip \
-		pkg/vid-tag-test-input.zip \
 		$(cRelServer):$(cRelDIr)
+
+#		pkg/vid-tag-test-input.zip \
+
 
 install : build
 	cp -i vid-tag vid-tag.inc vid-tag.test ~/bin/

@@ -184,10 +184,9 @@ time.
 
     Config var: `TimeZone`.  Default: `local` (no conversion).
 
-    When set to a value other than `local` (or empty),
-    each file's CreateDate is converted from **pTimeZone** to the host's
-    local time before it is used for the output filename, and all the
-    other EXIF time settings.
+    When set to a value other than `local`, each file's CreateDate is
+    converted from **pTimeZone** to the host's local time before it is used
+    for the output filename, and all the other EXIF time settings.
 
     Pattern: `UTC[+-]H` or `UTC[+-]H:MM`.  The `UTC` prefix is
     case-insensitive (`utc-1` is accepted).
@@ -272,7 +271,7 @@ vid-tag looks for and assigns to its internal `gp*` globals.
     City="..."                   # pCity             (-c)
     Title="..."                  # pEventTitle       (-E)
     Keyword="word, word"         # pKeyword          (-k)
-    TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z) - optional
+    TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z)
     Extra["FILE1"]="extra title for FILE1"   # optional, per-file
     Extra["FILE2"]="extra title for FILE2"   # ...
 
@@ -288,14 +287,9 @@ unaffected.
 The append rule: a single space follows the title's trailing '.', then
 the "extra" text, then a closing '.'.
 
-**TimeZone** is optional.  Omit (or set to `"local"`) to disable the
-CreateDate timezone conversion.  See the **-z** option for the format
-and semantics.
-
 When vid-tag exits, it rewrites `./vid-tag.conf` with the final
 effective values (defaults + previous conf + any command-line
-overrides), so the next run will only need the file list (and **-e**
-if you want a different event).
+overrides), so the next run will only need the file list.
 
 # RETURN VALUE
 

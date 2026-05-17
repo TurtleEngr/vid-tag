@@ -8,7 +8,7 @@ Rename video files and set Title / Caption / Keywords metadata.
 
 # SYNOPSIS
 
-First run. Create config file: `./vid-tag.conf`
+First run. Create initial config file: `./vid-tag.conf`
 
     vid-tag -n -e "pEventId" [File1 File2 ...]
 
@@ -119,45 +119,45 @@ time.
     The value will be changed to lower-case and any spaces will be changed
     to '\_'
 
-    Pattern token: **%e**.  Config key: `event.tag`. Required: "pEventId"
+    Pattern token: **%e**.  Config var: `Event`. Required: "pEventId"
 
 - **-E "pEventTitle"**
 
     Long event name used in the title.
 
-    Pattern token: **%E**.  Config key: `event.title`. Default: "Long
+    Pattern token: **%E**.  Config var: `Title`. Default: "Long
     event description."
 
 - **-c "pCity"**
 
     City name.
 
-    Pattern token: **%c**.  Config key: `event.city`. Default: "city name"
+    Pattern token: **%c**.  Config var: `City`. Default: "city name"
 
 - **-C "pCaption"**
 
     Caption / description metadata.
 
-    Config key: `com.caption`. Default: "Copyright TERMS"
+    Config var: `Caption`. Default: "Copyright TERMS"
 
 - **-p "pInitials"**
 
     Photographer's initials / short name (no spaces).
 
-    Pattern token: **%p**.  Config key: `com.name-short`.
+    Pattern token: **%p**.  Config var: `NameShort`.
 
 - **-P "pName"**
 
     Photographer's full name.
 
-    Pattern token: **%P**.  Config key: `com.name-long`. Default: First
+    Pattern token: **%P**.  Config var: `NameLong`. Default: First
     Last
 
 - **-R "pCopyright"**
 
     Copyright stamp.
 
-    Config key: `com.copyright` Default: "Copyright NAME YYYY"
+    Config var: `Copyright` Default: "Copyright NAME YYYY"
 
 - **-f "pFilePattern"**
 
@@ -165,24 +165,24 @@ time.
     pattern options, because they should not have any spaces or special
     characters in them.
 
-    Config key: `com.file-pat`. Default: `%d_%e_%p_%f`.
+    Config var: `FilePat`. Default: `%d_%e_%p_%f`.
 
 - **-t "pTitlePattern"**
 
     Title pattern.  Usually you will use the uppercase pattern options,
     but the lowercase options can be used.
 
-    Config key: `com.title-pat`. Default: `%D, %c, %E, by %P.`
+    Config var: `TitlePat`. Default: `%D, %c, %E, by %P.`
 
 - **-k "pKeyword"**
 
     Comma-separated keyword list.
 
-    Config key: `event.keyword`. Default: "PBP, event"
+    Config var: `Keyword`. Default: "PBP, event"
 
 - **-z "pTimeZone"**
 
-    Config key: `event.time-zone`.  Default: `local` (no conversion).
+    Config var: `TimeZone`.  Default: `local` (no conversion).
 
     When set to a value other than `local` (or empty),
     each file's CreateDate is converted from **pTimeZone** to the host's
@@ -257,37 +257,45 @@ time.
 
 ## Config File Format
 
-This is the config file (`./vid-tag.conf`) format.
-The value of `$gpEventId` is the primary key.
+This is the config file (`./vid-tag.conf`) format.  The file is a
+**bash include file**: each line is a bash variable assignment that is
+sourced by vid-tag at startup.  The variables have specific names that
+vid-tag looks for and assigns to its internal `gp*` globals.
 
-    [vid-tag "com"]
-        file-pat   = %d_%e_%p_%f (pFilePatern)
-        title-pat  = %D, %c, %E, by %P. (pTitlePattern)
-        name-long  = Photographer Name (pName)
-        name-short = Initials (pInitial)
-        copyright  = pCopyright
-        caption    = pCaption
-    [vid-tag "pEventId"]
-        title      = Long Event Title (pEventTitle)
-        city       = pCity
-        keyword    = word, word (pKeyword)
-        time-zone  = UTC[+-]H[:MM] | local (pTimeZone) - optional
-    [vid-tag "extra"]
-        FILE1      = extra title text for FILE1 - optional
-        FILE2      = extra title text for FILE2 - optional
-        ...
+    Caption="..."                # pCaption          (-C)
+    Copyright="..."              # pCopyright        (-R)
+    FilePat="%d_%e_%p_%f"        # pFilePattern      (-f)
+    NameLong="..."               # pName             (-P)
+    NameShort="..."              # pInitials         (-p)
+    TitlePat="%D, %c, %E, by %P." # pTitlePattern    (-t)
+    Event="pEventId"             # pEventId          (-e)
+    City="..."                   # pCity             (-c)
+    Title="..."                  # pEventTitle       (-E)
+    Keyword="word, word"         # pKeyword          (-k)
+    TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z) - optional
+    Extra["FILE1"]="extra title for FILE1"   # optional, per-file
+    Extra["FILE2"]="extra title for FILE2"   # ...
 
-The **\[vid-tag "extra"\]** section is optional.  Each key is the exact
-basename of an input file (case-sensitive); the value is the text that
-will be appended to that file's EXIF Title.  Files without a matching
-key are unaffected.
+Because the file is just bash, you can include comments (lines
+starting with `#`) and may even compute values dynamically.  The
+syntax is verified with `bash -n` before the file is sourced.
+
+The **Extra** entries are optional.  Each key is the exact basename of
+an input file (case-sensitive); the value is the text that will be
+appended to that file's EXIF Title.  Files without a matching key are
+unaffected.
 
 The append rule: a single space follows the title's trailing '.', then
 the "extra" text, then a closing '.'.
 
-time-zone - is optional.  Omit (or set to `local`) to disable the
+**TimeZone** is optional.  Omit (or set to `"local"`) to disable the
 CreateDate timezone conversion.  See the **-z** option for the format
 and semantics.
+
+When vid-tag exits, it rewrites `./vid-tag.conf` with the final
+effective values (defaults + previous conf + any command-line
+overrides), so the next run will only need the file list (and **-e**
+if you want a different event).
 
 # RETURN VALUE
 
@@ -349,7 +357,7 @@ the testCli\*Slow tests.
 
 Required: Linux OS (see CAVEATS for Windows and MacOS)
 
-Required: bash, exiftool, git config, ffmpeg, sed
+Required: bash, exiftool, ffmpeg, sed
 
 Optional: vid-tag.test
 
@@ -437,4 +445,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=1.3.4
+cVer=2.1

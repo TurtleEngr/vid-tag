@@ -252,7 +252,8 @@ Pattern token: B<%c>.  Config var: C<City>. Default: "city name"
 
 =item B<-C "pCaption">
 
-Caption / description metadata.
+Caption / description metadata. Any "Pattern Tokens" will be replaced
+in pCaption.
 
 Config var: C<Caption>. Default: "Copyright TERMS"
 
@@ -271,9 +272,10 @@ Last
 
 =item B<-R "pCopyright">
 
-Copyright stamp.
+Copyright stamp.  Any "Pattern Tokens" will be replaced in
+pCopyriight.
 
-Config var: C<Copyright> Default: "Copyright NAME YYYY"
+Config var: C<Copyright> Default: "Copyright %P %d"
 
 =item B<-f "pFilePattern">
 
@@ -677,8 +679,8 @@ fSetGlobals() {
     # -------------------
     # Config-backed variables – hard-coded defaults.
     # Overridden in order: global conf → local conf → command line.
-    gpCaption=${gpCaption:-"Copyright TERMS"}
-    gpCopyright=${gpCopyright:-"Copyright NAME YYYY"}
+    gpCaption=${gpCaption:-"Copyright %P %d"}
+    gpCopyright=${gpCopyright:-"Copyright %P %d"}
     gpEventCity=${gpEventCity:-"TBD"}
     gpEventFileList=${gpEventFileList:-""}
     gpEventKeyword=${gpEventKeyword:-"TBD"}

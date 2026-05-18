@@ -136,7 +136,8 @@ time.
 
 - **-C "pCaption"**
 
-    Caption / description metadata.
+    Caption / description metadata. Any "Pattern Tokens" will be replaced
+    in pCaption.
 
     Config var: `Caption`. Default: "Copyright TERMS"
 
@@ -155,9 +156,10 @@ time.
 
 - **-R "pCopyright"**
 
-    Copyright stamp.
+    Copyright stamp.  Any "Pattern Tokens" will be replaced in
+    pCopyriight.
 
-    Config var: `Copyright` Default: "Copyright NAME YYYY"
+    Config var: `Copyright` Default: "Copyright %P %d"
 
 - **-f "pFilePattern"**
 
@@ -462,4 +464,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.3
+cVer=2.3.1

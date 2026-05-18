@@ -464,7 +464,7 @@ the testCli*Slow tests.
 
 Required: Linux OS (see CAVEATS for Windows and MacOS)
 
-Required: bash, exiftool, ffmpeg, sed
+Required: bash, exiftool, ffmpeg, convert, sed
 
 Optional: vid-tag.test
 
@@ -683,7 +683,7 @@ fSetGlobals() {
 
     # -------------------
     # Required and optional external programs
-    fComCheckDeps "bash exiftool ffmpeg sed" "cat"
+    fComCheckDeps "bash exiftool ffmpeg convert sed" "cat"
 
     return
 

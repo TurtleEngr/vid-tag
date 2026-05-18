@@ -703,7 +703,7 @@ fSetGlobals() {
     cgThumbColor="-fill white"
     cgThumbBgColor="-undercolor black"
     cgThumbGravity="-gravity northwest -annotate +50+50"
-    cgThumbTextGravity="-gravity west -annotate +0+0"
+    cgThumbTextGravity="-gravity east -annotate +50+0"
     cgThumbText="VIDEO-->"
 
     # -------------------

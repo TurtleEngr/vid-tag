@@ -1641,6 +1641,56 @@ testApplyPattern_AllTokens() {
 } # testApplyPattern_AllTokens
 
 # --------------------------------
+testApplyPattern_CaptionPatterns() {
+    # Verify that fApplyPattern expands tokens in Caption and Copyright
+    # values the same way it does for FilePat and TitlePat.  This mirrors
+    # what fProcessFile does before passing the values to exiftool.
+    local tResult
+
+    gFileDateShort="2024-06-15"
+    gFileDateLong="2024-06-15 Sat"
+    gFileDateFull="2024-06-15_10:30:00"
+    gpEventId="summer_camp"
+    gpEventTitle="Summer Camp 2024"
+    gpNameShort="BAR"
+    gpNameLong="Bruce Rafnel"
+    gpEventCity="Springfield"
+
+    # Copyright with %p and %d tokens (matches the vid-tag.conf example).
+    gpCopyright="Copyright %p %d"
+    tResult=$(fApplyPattern "$gpCopyright" "clip001.mp4")
+    assertEquals "$LINENO copyright %p %d" \
+        "Copyright BAR 2024-06-15" "$tResult"
+
+    # Copyright with photographer long name.
+    gpCopyright="Copyright %P %d"
+    tResult=$(fApplyPattern "$gpCopyright" "clip001.mp4")
+    assertEquals "$LINENO copyright %P %d" \
+        "Copyright Bruce Rafnel 2024-06-15" "$tResult"
+
+    # Caption containing %P (matches the vid-tag.conf example format).
+    gpCaption="Photo by %P. License: CC-BY-NC."
+    tResult=$(fApplyPattern "$gpCaption" "clip001.mp4")
+    assertEquals "$LINENO caption %P" \
+        "Photo by Bruce Rafnel. License: CC-BY-NC." "$tResult"
+
+    # Caption with no tokens passes through unchanged.
+    gpCaption="Static caption text."
+    tResult=$(fApplyPattern "$gpCaption" "clip001.mp4")
+    assertEquals "$LINENO caption no tokens" \
+        "Static caption text." "$tResult"
+
+    # Caption with multiple tokens.
+    gpCaption="Event: %E on %d in %c by %P."
+    tResult=$(fApplyPattern "$gpCaption" "clip001.mp4")
+    assertEquals "$LINENO caption multi-token" \
+        "Event: Summer Camp 2024 on 2024-06-15 in Springfield by Bruce Rafnel." \
+        "$tResult"
+
+    return 0
+} # testApplyPattern_CaptionPatterns
+
+# --------------------------------
 testLoadConf() {
     # fLoadConf sources the bash-include conf and copies each conf-file
     # variable to the corresponding internal gp* global.

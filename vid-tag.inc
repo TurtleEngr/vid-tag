@@ -1801,7 +1801,9 @@ fProcessFile() {
     local -i tIncMin
     local -i tNumParts
     local tBase
+    local tCaption
     local tCmd
+    local tCopyright
     local tDate
     local tFile
     local tLength
@@ -1831,6 +1833,10 @@ fProcessFile() {
         tNewTitle="$tNewTitle ${gExtraMap[$tBase]}."
     fi
 
+    # Expand any pattern tokens in Caption and Copyright.
+    tCaption=$(   fApplyPattern "$gpCaption"   "$tBase")
+    tCopyright=$( fApplyPattern "$gpCopyright" "$tBase")
+
     # ----------
     # Collision guard before rename.
     if [[ "$tBase" != "$tNewName" && -e "$tNewName" ]]; then
@@ -1849,13 +1855,13 @@ fProcessFile() {
         -overwrite_original
         -FileName="$tNewName"
         -Title="$tNewTitle"
-        -Copyright="$gpCopyright"
-        -Artist="$gpCopyright"
+        -Copyright="$tCopyright"
+        -Artist="$tCopyright"
         -Author="$gpNameLong"
         -Keywords="$gpEventKeyword"
-        -Caption="$gpCaption"
-        -Description="$gpCaption"
-        -ImageDescription="$gpCaption"
+        -Caption="$tCaption"
+        -Description="$tCaption"
+        -ImageDescription="$tCaption"
     )
     if [[ "$gpTimeZone" != "local" ]]; then
         tCmd+=(

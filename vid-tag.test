@@ -218,12 +218,15 @@ setUp() {
     gpNameLong="TBD"
     gpNameShort="TBD"
     gpTimeZone="local"
+    gpThumb="no"
     gpNoExec=0
     gpVerbose=0
     gpDebug=0
 
     # Per-file extras: populated by fLoadConf from Extra[...] lines.
     declare -gA gExtraMap=()
+    # Per-file thumb times: populated by fLoadConf from ThumbTime[...] lines.
+    declare -gA gThumbMap=()
 
     # Per-file globals
     gFile=""
@@ -1664,6 +1667,110 @@ CONF
 } # testLoadConf_PreservesDefaults
 
 # --------------------------------
+testLoadConf_Thumb() {
+    # Thumb="yes" in the conf must populate gpThumb.  Absent Thumb=
+    # leaves the pre-load default in place.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'CONF'
+Event="testevent"
+Thumb="yes"
+CONF
+
+    gpConfLocal="$tConf"
+    gpThumb="no"
+
+    fLoadConf >/dev/null 2>&1
+
+    assertEquals "$LINENO Thumb yes" "yes" "$gpThumb"
+
+    # Absent Thumb= → keep default.
+    cat > "$tConf" << 'CONF'
+Event="testevent"
+CONF
+    gpThumb="no"
+    fLoadConf >/dev/null 2>&1
+    assertEquals "$LINENO Thumb default" "no" "$gpThumb"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadConf_Thumb
+
+# --------------------------------
+testLoadConf_ThumbTime() {
+    # ThumbTime["FILE"]="..." lines in the conf must populate gThumbMap
+    # with exact, case-sensitive keys.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'CONF'
+Event="testevent"
+ThumbTime["MVI_0746.MP4"]="5:01"
+ThumbTime["MVI_0794.MP4"]="00:02:43"
+CONF
+
+    gpConfLocal="$tConf"
+    declare -gA gThumbMap=()
+
+    fLoadConf >/dev/null 2>&1
+
+    assertEquals "$LINENO map size" "2"          "${#gThumbMap[@]}"
+    assertEquals "$LINENO 0746"     "5:01"       "${gThumbMap[MVI_0746.MP4]:-}"
+    assertEquals "$LINENO 0794"     "00:02:43"   "${gThumbMap[MVI_0794.MP4]:-}"
+
+    # Case mismatch → not a match (same rule as gExtraMap).
+    assertEquals "$LINENO lowercase miss" "" "${gThumbMap[mvi_0746.mp4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadConf_ThumbTime
+
+# --------------------------------
+testSaveConf_Thumb_RoundTrip() {
+    # fSaveConf must persist gpThumb and gThumbMap; fLoadConf must read
+    # them back to the same values.
+    local tConf="$cTmp1"
+
+    rm -f "$tConf"
+    gpConfLocal="$tConf"
+    gpEventId="thumbrt"
+    gpThumb="yes"
+
+    declare -gA gThumbMap=(
+        ["MVI_0746.MP4"]="5:01"
+        ["MVI_0794.MP4"]="00:02:43"
+    )
+
+    fSaveConf >/dev/null 2>&1
+    assertTrue "$LINENO file created" "[ -f $tConf ]"
+
+    # File must be valid bash.
+    bash -n "$tConf"
+    assertTrue "$LINENO valid bash"   "[ $? -eq 0 ]"
+
+    # Thumb= line and two ThumbTime[] lines must be present.
+    grep -q '^Thumb="yes"' "$tConf"
+    assertTrue "$LINENO Thumb line"   "[ $? -eq 0 ]"
+    grep -q '^ThumbTime\["MVI_0746.MP4"\]="5:01"' "$tConf"
+    assertTrue "$LINENO 0746 line"    "[ $? -eq 0 ]"
+    grep -q '^ThumbTime\["MVI_0794.MP4"\]="00:02:43"' "$tConf"
+    assertTrue "$LINENO 0794 line"    "[ $? -eq 0 ]"
+
+    # Wipe globals and reload.
+    gpThumb=""
+    declare -gA gThumbMap=()
+
+    fLoadConf >/dev/null 2>&1
+
+    assertEquals "$LINENO Thumb rt"   "yes"        "$gpThumb"
+    assertEquals "$LINENO map size"   "2"          "${#gThumbMap[@]}"
+    assertEquals "$LINENO 0746 rt"    "5:01"       "${gThumbMap[MVI_0746.MP4]:-}"
+    assertEquals "$LINENO 0794 rt"    "00:02:43"   "${gThumbMap[MVI_0794.MP4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testSaveConf_Thumb_RoundTrip
+
+# --------------------------------
 testSaveConf() {
     # fSaveConf writes the current gp* / gExtraMap values to
     # gpConfLocal in bash-include format.  The file must be valid bash
@@ -1834,6 +1941,19 @@ testGetOpt_FileList() {
         "fileA.mp4 fileB.mp4 fileC.mp4" "$gpEventFileList"
     return 0
 } # testGetOpt_FileList
+
+# --------------------------------
+testGetOpt_Thumb() {
+    # -T sets gpThumb="yes"; absent -T leaves the pre-parse default.
+    gpThumb="no"
+    fGetOpt -e evt -T
+    assertEquals "$LINENO -T set"   "yes" "$gpThumb"
+
+    gpThumb="no"
+    fGetOpt -e evt
+    assertEquals "$LINENO no -T"    "no"  "$gpThumb"
+    return 0
+} # testGetOpt_Thumb
 
 # --------------------------------
 testValidate_OK() {

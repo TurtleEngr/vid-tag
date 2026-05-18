@@ -3,7 +3,7 @@
 # $Revision: 1.10 $ $Date: 2026/04/29 18:27:22 $ GMT
 set -u
 
-export cVer=2.1
+export cVer=2.2
 
 # --------------------------------
 fUsageTest() {
@@ -117,7 +117,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-cVer=2.1
+cVer=2.2
 
 =cut
 EOF
@@ -218,12 +218,15 @@ setUp() {
     gpNameLong="TBD"
     gpNameShort="TBD"
     gpTimeZone="local"
+    gpThumb="no"
     gpNoExec=0
     gpVerbose=0
     gpDebug=0
 
     # Per-file extras: populated by fLoadConf from Extra[...] lines.
     declare -gA gExtraMap=()
+    # Per-file thumb times: populated by fLoadConf from ThumbTime[...] lines.
+    declare -gA gThumbMap=()
 
     # Per-file globals
     gFile=""
@@ -1201,6 +1204,159 @@ testCliFullRunExifSlow() {
     return 0
 } # testCliFullRunExifSlow
 
+# --------------------------------
+fHelperMakeSyntheticVideo() {
+    # Create a synthetic test video using ffmpeg's lavfi color source.
+    # Uses minimum-spec encoding (320x240, 1fps) so the file is
+    # generated in well under a second; a 21-minute video still takes
+    # under 1s of wall time.  No external input archive required.
+    #
+    # $1 = output filename
+    # $2 = duration in seconds (also embedded as -t)
+    # $3 = ISO-8601 creation_time embedded as metadata (e.g.
+    #      "2026-01-15T10:30:00Z").  vid-tag reads CreateDate from this.
+    local pFile="$1"
+    local -i pDur=$2
+    local pCreate="$3"
+
+    ffmpeg -y -f lavfi -i "color=c=blue:s=320x240:r=1:d=$pDur" \
+        -c:v libx264 -t $pDur \
+        -metadata creation_time="$pCreate" \
+        "$pFile" >/dev/null 2>&1
+} # fHelperMakeSyntheticVideo
+
+# --------------------------------
+testCliThumb_NotEnabled() {
+    # Without -T and without Thumb="yes" in the conf, no .jpg is
+    # produced even though the video is renamed normally.
+    local tVid="SYNTH_001.MP4"
+
+    fHelperMakeSyntheticVideo "$tVid" 15 "2026-01-15T10:30:00Z"
+    assertTrue "$LINENO synth vid created" "[ -f $tVid ]"
+
+    rm -rf ./output
+    # Default conf from setUp has no Thumb= line, so gpThumb stays "no".
+    $cBin/vid-tag -e thumbtest "$tVid" >/dev/null 2>&1
+
+    assertTrue "$LINENO renamed video exists" \
+        "[ -f ./output/2026-01-15_thumbtest_BAR_$tVid ]"
+    if ls ./output/*.jpg 2>/dev/null | grep -q .; then
+        fail "$LINENO unexpected .jpg produced when Thumb is off"
+    fi
+
+    rm -f "$tVid"
+    return 0
+} # testCliThumb_NotEnabled
+
+# --------------------------------
+testCliThumb_Enabled() {
+    # With Thumb="yes" in the conf, the thumbnail is created with
+    # CreateDate / DateTimeOriginal / ModifyDate / mtime all set to
+    # exactly one second before the video's CreateDate, and the
+    # Artist/Copyright tags copied from the video.
+    local tVid="SYNTH_002.MP4"
+    local tThumb="./output/2026-01-15_thumbtest_BAR_SYNTH_002.jpg"
+    local tVideo="./output/2026-01-15_thumbtest_BAR_SYNTH_002.MP4"
+    local tVidDate
+    local tThumbDate
+    local tArtist
+
+    fHelperMakeSyntheticVideo "$tVid" 15 "2026-01-15T10:30:00Z"
+    assertTrue "$LINENO synth vid created" "[ -f $tVid ]"
+
+    # Override the default conf to enable thumbs.
+    cat >vid-tag.conf <<'CONF'
+Caption="x"
+Copyright="(c) Tester 2026"
+FilePat="%d_%e_%p_%f"
+NameLong="Tester"
+NameShort="BAR"
+TitlePat="%D, %c, %E, by %P."
+Event="thumbtest"
+City="X"
+Title="Thumb test"
+Keyword="kw"
+TimeZone="local"
+Thumb="yes"
+CONF
+
+    rm -rf ./output
+    $cBin/vid-tag -e thumbtest "$tVid" >/dev/null 2>&1
+
+    assertTrue "$LINENO video exists" "[ -f $tVideo ]"
+    assertTrue "$LINENO thumb exists" "[ -f $tThumb ]"
+
+    # ----- Thumb CreateDate is one second before video's -----
+    tVidDate=$(exiftool   -s3 -CreateDate "$tVideo")
+    tThumbDate=$(exiftool -s3 -CreateDate "$tThumb")
+    assertEquals "$LINENO video CreateDate" "2026:01:15 10:30:00" "$tVidDate"
+    assertEquals "$LINENO thumb CreateDate" "2026:01:15 10:29:59" "$tThumbDate"
+
+    # ----- And DateTimeOriginal / ModifyDate are also -1s -----
+    assertEquals "$LINENO thumb DateTimeOrig" "2026:01:15 10:29:59" \
+        "$(exiftool -s3 -DateTimeOriginal "$tThumb")"
+    assertEquals "$LINENO thumb ModifyDate"   "2026:01:15 10:29:59" \
+        "$(exiftool -s3 -ModifyDate "$tThumb")"
+
+    # ----- mtime is also one second earlier -----
+    assertEquals "$LINENO thumb mtime" "2026-01-15 10:29:59" \
+        "$(date -d "$(stat -c %y "$tThumb")" +"%Y-%m-%d %H:%M:%S")"
+
+    # ----- Tags copied from video to thumb -----
+    tArtist=$(exiftool -s3 -Artist "$tThumb")
+    assertEquals "$LINENO Artist copied"    "(c) Tester 2026" "$tArtist"
+
+    rm -f "$tVid"
+    return 0
+} # testCliThumb_Enabled
+
+# --------------------------------
+testCliThumb_SplitOne() {
+    # A video longer than 10 min is split into N parts but produces
+    # exactly ONE thumbnail, named after the parent renamed file.
+    local tVid="SYNTH_LONG.MP4"
+    local -i tJpgCount
+
+    # 21 minutes -> ceil(21/10) = 3 split parts.
+    fHelperMakeSyntheticVideo "$tVid" 1260 "2026-02-20T14:00:00Z"
+    assertTrue "$LINENO synth vid created" "[ -f $tVid ]"
+
+    cat >vid-tag.conf <<'CONF'
+Caption="x"
+Copyright="x"
+FilePat="%d_%e_%p_%f"
+NameLong="Tester"
+NameShort="BAR"
+TitlePat="%D, %E."
+Event="splittest"
+City="X"
+Title="X"
+Keyword="X"
+TimeZone="local"
+Thumb="yes"
+CONF
+
+    rm -rf ./output
+    $cBin/vid-tag -e splittest "$tVid" >/dev/null 2>&1
+
+    # Parent renamed video remains, plus the three split parts.
+    assertTrue "$LINENO parent exists" \
+        "[ -f ./output/2026-02-20_splittest_BAR_SYNTH_LONG.MP4 ]"
+    assertTrue "$LINENO split 00 exists" \
+        "[ -f ./output/2026-02-20_splittest_BAR_SYNTH_LONG-00.mp4 ]"
+    assertTrue "$LINENO split 02 exists" \
+        "[ -f ./output/2026-02-20_splittest_BAR_SYNTH_LONG-02.mp4 ]"
+
+    # Exactly one .jpg, named after the parent.
+    tJpgCount=$(ls ./output/*.jpg 2>/dev/null | wc -l)
+    assertEquals "$LINENO jpg count" "1" "$tJpgCount"
+    assertTrue "$LINENO thumb name" \
+        "[ -f ./output/2026-02-20_splittest_BAR_SYNTH_LONG.jpg ]"
+
+    rm -f "$tVid"
+    return 0
+} # testCliThumb_SplitOne
+
 # ========================================
 # Function-level tests (vid-tag.inc)
 # ========================================
@@ -1485,6 +1641,56 @@ testApplyPattern_AllTokens() {
 } # testApplyPattern_AllTokens
 
 # --------------------------------
+testApplyPattern_CaptionPatterns() {
+    # Verify that fApplyPattern expands tokens in Caption and Copyright
+    # values the same way it does for FilePat and TitlePat.  This mirrors
+    # what fProcessFile does before passing the values to exiftool.
+    local tResult
+
+    gFileDateShort="2024-06-15"
+    gFileDateLong="2024-06-15 Sat"
+    gFileDateFull="2024-06-15_10:30:00"
+    gpEventId="summer_camp"
+    gpEventTitle="Summer Camp 2024"
+    gpNameShort="BAR"
+    gpNameLong="Bruce Rafnel"
+    gpEventCity="Springfield"
+
+    # Copyright with %p and %d tokens (matches the vid-tag.conf example).
+    gpCopyright="Copyright %p %d"
+    tResult=$(fApplyPattern "$gpCopyright" "clip001.mp4")
+    assertEquals "$LINENO copyright %p %d" \
+        "Copyright BAR 2024-06-15" "$tResult"
+
+    # Copyright with photographer long name.
+    gpCopyright="Copyright %P %d"
+    tResult=$(fApplyPattern "$gpCopyright" "clip001.mp4")
+    assertEquals "$LINENO copyright %P %d" \
+        "Copyright Bruce Rafnel 2024-06-15" "$tResult"
+
+    # Caption containing %P (matches the vid-tag.conf example format).
+    gpCaption="Photo by %P. License: CC-BY-NC."
+    tResult=$(fApplyPattern "$gpCaption" "clip001.mp4")
+    assertEquals "$LINENO caption %P" \
+        "Photo by Bruce Rafnel. License: CC-BY-NC." "$tResult"
+
+    # Caption with no tokens passes through unchanged.
+    gpCaption="Static caption text."
+    tResult=$(fApplyPattern "$gpCaption" "clip001.mp4")
+    assertEquals "$LINENO caption no tokens" \
+        "Static caption text." "$tResult"
+
+    # Caption with multiple tokens.
+    gpCaption="Event: %E on %d in %c by %P."
+    tResult=$(fApplyPattern "$gpCaption" "clip001.mp4")
+    assertEquals "$LINENO caption multi-token" \
+        "Event: Summer Camp 2024 on 2024-06-15 in Springfield by Bruce Rafnel." \
+        "$tResult"
+
+    return 0
+} # testApplyPattern_CaptionPatterns
+
+# --------------------------------
 testLoadConf() {
     # fLoadConf sources the bash-include conf and copies each conf-file
     # variable to the corresponding internal gp* global.
@@ -1664,6 +1870,110 @@ CONF
 } # testLoadConf_PreservesDefaults
 
 # --------------------------------
+testLoadConf_Thumb() {
+    # Thumb="yes" in the conf must populate gpThumb.  Absent Thumb=
+    # leaves the pre-load default in place.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'CONF'
+Event="testevent"
+Thumb="yes"
+CONF
+
+    gpConfLocal="$tConf"
+    gpThumb="no"
+
+    fLoadConf >/dev/null 2>&1
+
+    assertEquals "$LINENO Thumb yes" "yes" "$gpThumb"
+
+    # Absent Thumb= → keep default.
+    cat > "$tConf" << 'CONF'
+Event="testevent"
+CONF
+    gpThumb="no"
+    fLoadConf >/dev/null 2>&1
+    assertEquals "$LINENO Thumb default" "no" "$gpThumb"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadConf_Thumb
+
+# --------------------------------
+testLoadConf_ThumbTime() {
+    # ThumbTime["FILE"]="..." lines in the conf must populate gThumbMap
+    # with exact, case-sensitive keys.
+    local tConf="$cTmp1"
+
+    cat > "$tConf" << 'CONF'
+Event="testevent"
+ThumbTime["MVI_0746.MP4"]="5:01"
+ThumbTime["MVI_0794.MP4"]="00:02:43"
+CONF
+
+    gpConfLocal="$tConf"
+    declare -gA gThumbMap=()
+
+    fLoadConf >/dev/null 2>&1
+
+    assertEquals "$LINENO map size" "2"          "${#gThumbMap[@]}"
+    assertEquals "$LINENO 0746"     "5:01"       "${gThumbMap[MVI_0746.MP4]:-}"
+    assertEquals "$LINENO 0794"     "00:02:43"   "${gThumbMap[MVI_0794.MP4]:-}"
+
+    # Case mismatch → not a match (same rule as gExtraMap).
+    assertEquals "$LINENO lowercase miss" "" "${gThumbMap[mvi_0746.mp4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testLoadConf_ThumbTime
+
+# --------------------------------
+testSaveConf_Thumb_RoundTrip() {
+    # fSaveConf must persist gpThumb and gThumbMap; fLoadConf must read
+    # them back to the same values.
+    local tConf="$cTmp1"
+
+    rm -f "$tConf"
+    gpConfLocal="$tConf"
+    gpEventId="thumbrt"
+    gpThumb="yes"
+
+    declare -gA gThumbMap=(
+        ["MVI_0746.MP4"]="5:01"
+        ["MVI_0794.MP4"]="00:02:43"
+    )
+
+    fSaveConf >/dev/null 2>&1
+    assertTrue "$LINENO file created" "[ -f $tConf ]"
+
+    # File must be valid bash.
+    bash -n "$tConf"
+    assertTrue "$LINENO valid bash"   "[ $? -eq 0 ]"
+
+    # Thumb= line and two ThumbTime[] lines must be present.
+    grep -q '^Thumb="yes"' "$tConf"
+    assertTrue "$LINENO Thumb line"   "[ $? -eq 0 ]"
+    grep -q '^ThumbTime\["MVI_0746.MP4"\]="5:01"' "$tConf"
+    assertTrue "$LINENO 0746 line"    "[ $? -eq 0 ]"
+    grep -q '^ThumbTime\["MVI_0794.MP4"\]="00:02:43"' "$tConf"
+    assertTrue "$LINENO 0794 line"    "[ $? -eq 0 ]"
+
+    # Wipe globals and reload.
+    gpThumb=""
+    declare -gA gThumbMap=()
+
+    fLoadConf >/dev/null 2>&1
+
+    assertEquals "$LINENO Thumb rt"   "yes"        "$gpThumb"
+    assertEquals "$LINENO map size"   "2"          "${#gThumbMap[@]}"
+    assertEquals "$LINENO 0746 rt"    "5:01"       "${gThumbMap[MVI_0746.MP4]:-}"
+    assertEquals "$LINENO 0794 rt"    "00:02:43"   "${gThumbMap[MVI_0794.MP4]:-}"
+
+    gpConfLocal="./vid-tag.conf"
+    return 0
+} # testSaveConf_Thumb_RoundTrip
+
+# --------------------------------
 testSaveConf() {
     # fSaveConf writes the current gp* / gExtraMap values to
     # gpConfLocal in bash-include format.  The file must be valid bash
@@ -1834,6 +2144,19 @@ testGetOpt_FileList() {
         "fileA.mp4 fileB.mp4 fileC.mp4" "$gpEventFileList"
     return 0
 } # testGetOpt_FileList
+
+# --------------------------------
+testGetOpt_Thumb() {
+    # -T sets gpThumb="yes"; absent -T leaves the pre-parse default.
+    gpThumb="no"
+    fGetOpt -e evt -T
+    assertEquals "$LINENO -T set"   "yes" "$gpThumb"
+
+    gpThumb="no"
+    fGetOpt -e evt
+    assertEquals "$LINENO no -T"    "no"  "$gpThumb"
+    return 0
+} # testGetOpt_Thumb
 
 # --------------------------------
 testValidate_OK() {

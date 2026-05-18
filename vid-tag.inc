@@ -1,6 +1,6 @@
 set -u
 
-export cVer=2.1
+export cVer=2.2
 export cBin
 export cExampleFile
 export cOutputDir
@@ -27,6 +27,7 @@ export gpFilePat
 export gpNameLong
 export gpNameShort
 export gpNoExec
+export gpThumb
 export gpTimeZone
 export gpTitlePat
 
@@ -45,6 +46,12 @@ declare -ig gExampleIdx
 # (exact, case-sensitive); values are the text appended to the EXIF
 # Title for matching files.
 declare -Ag gExtraMap
+
+# Per-file thumbnail-time map populated by fLoadConf from "ThumbTime[...]"
+# bash array assignments in $gpConfLocal.  Keys are file basenames
+# (exact, case-sensitive); values are the timestamp (e.g. "00:02:43" or
+# "5:01") passed to ffmpeg -ss when extracting the thumbnail image.
+declare -Ag gThumbMap
 
 # ========================================
 # Script Functions
@@ -102,7 +109,7 @@ Edit config files, and/or use these options to override config file.
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
         [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
         [-f "pFilePattern"] [-t "pTitlePattern"]
-        [-z "pTimeZone"]
+        [-z "pTimeZone"] [-T]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
 =head1 DESCRIPTION
@@ -308,6 +315,27 @@ Examples:
     -z utc-8:03  # your PST time was off be 3 min.
     -z local     # explicit "no conversion"
 
+=item B<-T>
+
+Generate thumbnail images for each input video.  Equivalent to
+C<Thumb="yes"> in the conf file.  The thumbnail is a JPG with the same
+base name as the renamed video file, extracted with ffmpeg from a
+single frame and then annotated with convert(1).
+
+The extraction time is C<ThumbTime["FILE"]> from the conf when set,
+otherwise C<cgThumbTimeDefault> (5 seconds in).  If the file has an
+C<Extra["FILE"]> title or a C<ThumbTime["FILE"]> entry, the thumbnail
+is annotated at the top-left with that text (and the time in
+parentheses when ThumbTime is set).  A second annotation in the centre
+shows "VIDEO-->", prefixed with the segment count for files that will
+be split (e.g. "3 files VIDEO-->").
+
+The thumbnail's EXIF is copied from the video and its DateTimeOriginal
+/ CreateDate / ModifyDate / mtime are set to one second before the
+video's CreateDate.
+
+Config var: C<Thumb>. Default: C<no>.
+
 =item B<-n>
 
 No-execute / dry-run.  Validate inputs and create config file
@@ -383,8 +411,10 @@ vid-tag looks for and assigns to its internal C<gp*> globals.
     Title="..."                  # pEventTitle       (-E)
     Keyword="word, word"         # pKeyword          (-k)
     TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z)
+    Thumb="yes"                  # pThumb            (-T)
     Extra["FILE1"]="extra title for FILE1"   # optional, per-file
     Extra["FILE2"]="extra title for FILE2"   # ...
+    ThumbTime["FILE1"]="MM:SS or HH:MM:SS"   # optional, per-file
 
 Because the file is just bash, you can include comments (lines
 starting with C<#>) and may even compute values dynamically.  The
@@ -554,7 +584,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.1
+cVer=2.2
 
 =cut
 
@@ -590,7 +620,9 @@ referenced directly anywhere else in the script.
     Keyword             gpEventKeyword
     TimeZone            gpTimeZone
     Title               gpEventTitle
-    Extra[<FILE>]       gExtraMap[<FILE>]   (per-file title append)
+    Thumb               gpThumb              (yes/no)
+    Extra[<FILE>]       gExtraMap[<FILE>]    (per-file title append)
+    ThumbTime[<FILE>]   gThumbMap[<FILE>]    (per-file thumbnail seek time)
 
 =internal-head3 Per-file Extras
 
@@ -655,8 +687,24 @@ fSetGlobals() {
     gpFilePat=${gpFilePat:-'%d_%e_%p_%f'}
     gpNameLong=${gpNameLong:-"TBD"}
     gpNameShort=${gpNameShort:-"TBD"}
+    gpThumb=${gpThumb:-"no"}
     gpTimeZone=${gpTimeZone:-"local"}
     gpTitlePat=${gpTitlePat:-'%D, %c, %E, by %P.'}
+
+    # -------------------
+    # Thumbnail rendering constants (used by fMakeThumbnail and
+    # fThumbAddLabel).  cgThumbTimeDefault is the ffmpeg -ss value used
+    # when no ThumbTime is set for a file; the rest are convert(1)
+    # option strings inserted verbatim into the annotate command.
+    cgThumbTimeDefault="00:00:05"
+    cgThumbSize="-pointsize 45"
+    cgThumbMax="69"
+    cgThumbFont="-font times-roman"
+    cgThumbColor="-fill white"
+    cgThumbBgColor="-undercolor black"
+    cgThumbGravity="-gravity northwest -annotate +50+50"
+    cgThumbTextGravity="-gravity east -annotate +50+0"
+    cgThumbText="VIDEO-->"
 
     # -------------------
     # Per-file globals populated by fReadFileDate / fConvertDate
@@ -680,6 +728,7 @@ fSetGlobals() {
     # Per-file extras: populated by fLoadConf.  Reset to empty here so
     # repeated calls (in tests) don't accumulate stale entries.
     gExtraMap=()
+    gThumbMap=()
 
     # -------------------
     # Required and optional external programs
@@ -735,8 +784,9 @@ fLoadConf() {
 
     # Declare the Extra associative array before sourcing so
     # "Extra[KEY]=VALUE" lines in the conf produce an associative (not
-    # indexed) array.
+    # indexed) array.  Same for ThumbTime.
     local -A Extra=()
+    local -A ThumbTime=()
     local Caption=""
     local Copyright=""
     local FilePat=""
@@ -748,6 +798,7 @@ fLoadConf() {
     local Title=""
     local Keyword=""
     local TimeZone=""
+    local Thumb=""
 
     # shellcheck disable=SC1090
     source "$gpConfLocal"
@@ -766,6 +817,7 @@ fLoadConf() {
     gpEventTitle=${Title:-$gpEventTitle}
     gpEventKeyword=${Keyword:-$gpEventKeyword}
     gpTimeZone=${TimeZone:-$gpTimeZone}
+    gpThumb=${Thumb:-$gpThumb}
 
     # Per-file extras: copy Extra associative array into gExtraMap.
     gExtraMap=()
@@ -773,12 +825,18 @@ fLoadConf() {
         gExtraMap["$tKey"]="${Extra[$tKey]}"
     done
 
+    # Per-file thumb times: copy ThumbTime associative array into gThumbMap.
+    gThumbMap=()
+    for tKey in "${!ThumbTime[@]}"; do
+        gThumbMap["$tKey"]="${ThumbTime[$tKey]}"
+    done
+
     # Normalise event id (spaces -> underscores, lower-cased by
     # the gpEventId declare -l attribute).
     gpEventId="${gpEventId// /_}"
 
     fLog -p info \
-        -m "Loaded config: $gpConfLocal (event=$gpEventId, extras=${#gExtraMap[@]})" \
+        -m "Loaded config: $gpConfLocal (event=$gpEventId, extras=${#gExtraMap[@]}, thumbs=${#gThumbMap[@]})" \
         -l $LINENO
     return 0
 
@@ -871,11 +929,18 @@ fSaveConf() {
         echo "Title=\"$(fEscConf "$gpEventTitle")\""
         echo "Keyword=\"$(fEscConf "$gpEventKeyword")\""
         echo "TimeZone=\"$(fEscConf "$gpTimeZone")\""
+        echo "Thumb=\"$(fEscConf "$gpThumb")\""
         # Per-file extras - skipped if gExtraMap is empty.
         if [[ ${#gExtraMap[@]} -gt 0 ]]; then
             # Sort keys for deterministic output (helpful for diff/round-trip).
             for tKey in $(printf '%s\n' "${!gExtraMap[@]}" | sort); do
                 echo "Extra[\"$(fEscConf "$tKey")\"]=\"$(fEscConf "${gExtraMap[$tKey]}")\""
+            done
+        fi
+        # Per-file thumb times - skipped if gThumbMap is empty.
+        if [[ ${#gThumbMap[@]} -gt 0 ]]; then
+            for tKey in $(printf '%s\n' "${!gThumbMap[@]}" | sort); do
+                echo "ThumbTime[\"$(fEscConf "$tKey")\"]=\"$(fEscConf "${gThumbMap[$tKey]}")\""
             done
         fi
     } > "$gpConfLocal"
@@ -910,7 +975,7 @@ fGetOpt() {
     local OPTARG
     local tArg
 
-    while getopts :c:C:e:E:f:k:np:P:R:t:z:hH:vVd tArg; do
+    while getopts :c:C:e:E:f:k:np:P:R:t:Tz:hH:vVd tArg; do
         case $tArg in
             # Script arguments
             c) gpEventCity="$OPTARG" ;;
@@ -924,6 +989,7 @@ fGetOpt() {
             P) gpNameLong="$OPTARG" ;;
             R) gpCopyright="$OPTARG" ;;
             t) gpTitlePat="$OPTARG" ;;
+            T) gpThumb="yes" ;;
             z) gpTimeZone="$OPTARG" ;;
             # Common arguments
             h) fUsage long ;;
@@ -1542,6 +1608,189 @@ EOF
 } # fAddMin
 
 # --------------------------------
+fThumbAddLabel() {
+    # Annotate the thumbnail image pThumb with pText at gravity pGravity
+    # using the cgThumb* font/color/background constants.  The convert
+    # output is written to a temp file in the same directory and then
+    # renamed over pThumb.
+    #
+    # $1 = thumbnail image path
+    # $2 = text label
+    # $3 = convert "-gravity ... -annotate +X+Y" option string
+    local pThumb="$1"
+    local pText="$2"
+    local pGravity="$3"
+
+    local tTmp
+
+    tTmp="${pThumb%.*}.tmp.jpg"
+
+    fLog -p debug-1 \
+        -m "convert $pThumb $cgThumbSize $cgThumbFont $cgThumbColor $cgThumbBgColor $pGravity \"$pText\" $tTmp" \
+        -l $LINENO
+    # cgThumb* and pGravity are intentionally word-split so each
+    # "-flag value" pair becomes separate convert arguments.
+    # shellcheck disable=SC2086
+    convert "$pThumb" $cgThumbSize $cgThumbFont $cgThumbColor $cgThumbBgColor \
+        $pGravity "$pText" "$tTmp"
+    mv -f "$tTmp" "$pThumb"
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head2 fThumbAddLabel pThumb pText pGravity
+
+Add a single text annotation to pThumb using convert(1).  pGravity is
+the "-gravity ... -annotate +X+Y" option pair (e.g. cgThumbGravity for
+the Extra/Time label, cgThumbTextGravity for the VIDEO--> label).  The
+font / color / background / point-size are taken from the cgThumb*
+constants set by fSetGlobals.
+
+The output is written to a temp file and then moved over pThumb so the
+file is updated atomically.  Always returns 0; convert errors are not
+treated as fatal.
+
+=internal-cut
+EOF
+} # fThumbAddLabel
+
+# --------------------------------
+fMakeThumbnail() {
+    # Generate the thumbnail image for a renamed video file.  Called
+    # from fProcessFile after the rename + EXIF write, so $gFileDate is
+    # the (possibly timezone-converted) CreateDate of the source video.
+    # Must be called with CWD == ./output/ (same as fProcessFile).
+    #
+    # $1 = renamed video file in cOutputDir
+    # $2 = original basename (used for gExtraMap / gThumbMap lookup)
+    # $3 = number of split parts (1 = not split, >1 = split count)
+    local pRenamed="$1"
+    local pOrigBase="$2"
+    local -i pNumParts=$3
+
+    local tThumb
+    local tTime
+    local -i tHasTime
+    local tExtra
+    local tLabel
+    local tDate
+    local tTimeOnly
+    local tNorm
+    local tThumbDate
+    local tTouchDate
+
+    tThumb="${pRenamed%.*}.jpg"
+
+    # ----- Decide the ffmpeg seek time -----
+    if [[ -n "${gThumbMap[$pOrigBase]:-}" ]]; then
+        tTime="${gThumbMap[$pOrigBase]}"
+        tHasTime=1
+    else
+        tTime="$cgThumbTimeDefault"
+        tHasTime=0
+    fi
+
+    # ----- Extract the still image -----
+    if [[ -f "$tThumb" ]]; then
+        rm -f "$tThumb"
+    fi
+    fLog -p info -m "ffmpeg -ss $tTime -i $pRenamed -frames:v 1 $tThumb" -l $LINENO
+    ffmpeg -y -ss "$tTime" -i "$pRenamed" -frames:v 1 "$tThumb" >/dev/null 2>&1
+
+    # ----- Extra/Time label -----
+    # Per spec: skip this label only when there is no Extra AND no
+    # ThumbTime for this file.  Otherwise build "<extra> (<time>)" with
+    # either part possibly absent.
+    tExtra="${gExtraMap[$pOrigBase]:-}"
+    if [[ -n "$tExtra" || $tHasTime -ne 0 ]]; then
+        tLabel="${tExtra:0:$cgThumbMax}"
+        if [[ $tHasTime -ne 0 ]]; then
+            if [[ -n "$tLabel" ]]; then
+                tLabel="$tLabel ($tTime)"
+            else
+                tLabel="($tTime)"
+            fi
+        fi
+        fThumbAddLabel "$tThumb" "$tLabel" "$cgThumbGravity"
+    fi
+
+    # ----- VIDEO--> label (with split-count prefix when applicable) -----
+    if [[ $pNumParts -gt 1 ]]; then
+        tLabel="$pNumParts files $cgThumbText"
+    else
+        tLabel="$cgThumbText"
+    fi
+    fThumbAddLabel "$tThumb" "$tLabel" "$cgThumbTextGravity"
+
+    # ----- Copy EXIF from the video, with times 1 sec earlier -----
+    # gFileDate is exiftool format "YYYY:MM:DD HH:MM:SS".  date(1)
+    # accepts "YYYY-MM-DD HH:MM:SS" for arithmetic, so normalise the
+    # date colons before subtracting one second.  Use "1 second ago"
+    # rather than "- 1 second": the latter is parsed by GNU date(1) as
+    # a -01 UTC offset, not as subtraction.
+    tDate="${gFileDate%% *}"
+    tTimeOnly="${gFileDate##* }"
+    tNorm="${tDate//:/-} $tTimeOnly"
+    tThumbDate=$('date' -d "$tNorm 1 second ago" +"%Y:%m:%d %H:%M:%S")
+    tTouchDate=$('date' -d "$tNorm 1 second ago" +"%Y-%m-%d %H:%M:%S")
+
+    fLog -p info \
+        -m "exiftool -TagsFromFile $pRenamed -all:all -DateTimeOriginal=$tThumbDate ... $tThumb" \
+        -l $LINENO
+    exiftool -overwrite_original -TagsFromFile "$pRenamed" -all:all \
+        -DateTimeOriginal="$tThumbDate" \
+        -CreateDate="$tThumbDate" \
+        -ModifyDate="$tThumbDate" \
+        "$tThumb" >/dev/null 2>&1
+
+    fLog -p info -m "touch -d \"$tTouchDate\" $tThumb" -l $LINENO
+    touch -d "$tTouchDate" "$tThumb"
+
+    return 0
+
+    # shellcheck disable=SC2317
+    cat <<EOF >/dev/null
+=internal-pod
+
+=internal-head2 fMakeThumbnail pRenamed pOrigBase pNumParts
+
+Generate the thumbnail "\${pRenamed%.*}.jpg" for a renamed video file.
+Reads gThumbMap and gExtraMap (keyed by pOrigBase) and uses gFileDate
+(already timezone-converted by fReadFileDate) as the source for the
+thumbnail's date metadata.
+
+Steps:
+
+=internal-over 4
+
+=internal-item 1. Extract a single frame with ffmpeg -ss.  Time is
+gThumbMap[pOrigBase] when set, otherwise cgThumbTimeDefault.
+
+=internal-item 2. If an Extra title or a ThumbTime is defined for the
+file, annotate the thumb at cgThumbGravity with "<extra> (<time>)"
+(either part may be absent).  Extra text is truncated to cgThumbMax
+characters.
+
+=internal-item 3. Annotate the thumb at cgThumbTextGravity with the
+cgThumbText marker.  When pNumParts > 1 the text is prefixed with
+"<pNumParts> files ".
+
+=internal-item 4. Copy all compatible EXIF from pRenamed and set
+DateTimeOriginal / CreateDate / ModifyDate to one second before
+gFileDate.  Set the file mtime to the same value.
+
+=internal-back
+
+Returns 0; per-step errors (ffmpeg/convert/exiftool) are logged but
+not fatal.
+
+=internal-cut
+EOF
+} # fMakeThumbnail
+
+# --------------------------------
 fProcessFile() {
     # Rename + tag a single file.  Must be called with CWD == ./output/
     local pFile="$1"
@@ -1550,8 +1799,11 @@ fProcessFile() {
     local -i tM
     local -i tS
     local -i tIncMin
+    local -i tNumParts
     local tBase
+    local tCaption
     local tCmd
+    local tCopyright
     local tDate
     local tFile
     local tLength
@@ -1581,6 +1833,10 @@ fProcessFile() {
         tNewTitle="$tNewTitle ${gExtraMap[$tBase]}."
     fi
 
+    # Expand any pattern tokens in Caption and Copyright.
+    tCaption=$(   fApplyPattern "$gpCaption"   "$tBase")
+    tCopyright=$( fApplyPattern "$gpCopyright" "$tBase")
+
     # ----------
     # Collision guard before rename.
     if [[ "$tBase" != "$tNewName" && -e "$tNewName" ]]; then
@@ -1599,13 +1855,13 @@ fProcessFile() {
         -overwrite_original
         -FileName="$tNewName"
         -Title="$tNewTitle"
-        -Copyright="$gpCopyright"
-        -Artist="$gpCopyright"
+        -Copyright="$tCopyright"
+        -Artist="$tCopyright"
         -Author="$gpNameLong"
         -Keywords="$gpEventKeyword"
-        -Caption="$gpCaption"
-        -Description="$gpCaption"
-        -ImageDescription="$gpCaption"
+        -Caption="$tCaption"
+        -Description="$tCaption"
+        -ImageDescription="$tCaption"
     )
     if [[ "$gpTimeZone" != "local" ]]; then
         tCmd+=(
@@ -1643,6 +1899,22 @@ fProcessFile() {
     IFS=':' read -r tH tM tS <<< "$tLength"
     IFS=' '
     ((tMin = $tH * 60 + $tM))
+
+    # Compute the split-part count (1 = not split).  Used both for the
+    # thumbnail's "VIDEO-->" label prefix and the split-or-not branch.
+    tNumParts=1
+    if [[ $tMin -gt 10 ]]; then
+        tNumParts=$(( (tMin * 60 + 10#$tS + 599) / 600 ))
+    fi
+
+    # ----------
+    # Generate the thumbnail (when enabled).  Must happen after rename +
+    # EXIF write and before any split, so the thumbnail is named after
+    # the parent renamed file.
+    if [[ "$gpThumb" = "yes" ]]; then
+        fMakeThumbnail "$tNewName" "$tBase" "$tNumParts"
+    fi
+
     if [[ $tMin -le 10 ]]; then
         return 0
     fi

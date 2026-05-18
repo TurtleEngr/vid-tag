@@ -1,6 +1,6 @@
 set -u
 
-export cVer=2.1
+export cVer=2.2
 export cBin
 export cExampleFile
 export cOutputDir
@@ -584,7 +584,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.1
+cVer=2.2
 
 =cut
 

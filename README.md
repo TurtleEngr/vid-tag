@@ -18,7 +18,7 @@ Edit config files, and/or use these options to override config file.
         [-p "pInitials"] [-P "pName"] [-C "pCaption"] [-R "pCopyright"]
         [-E "pEventTitle"] [-c "pCity"] [-k "pKeyword"]
         [-f "pFilePattern"] [-t "pTitlePattern"]
-        [-z "pTimeZone"]
+        [-z "pTimeZone"] [-T]
         [-n] [-h] [-H pStyle] [-v] [-d]
 
 # DESCRIPTION
@@ -199,6 +199,27 @@ time.
         -z utc-8:03  # your PST time was off be 3 min.
         -z local     # explicit "no conversion"
 
+- **-T**
+
+    Generate thumbnail images for each input video.  Equivalent to
+    `Thumb="yes"` in the conf file.  The thumbnail is a JPG with the same
+    base name as the renamed video file, extracted with ffmpeg from a
+    single frame and then annotated with convert(1).
+
+    The extraction time is `ThumbTime["FILE"]` from the conf when set,
+    otherwise `cgThumbTimeDefault` (5 seconds in).  If the file has an
+    `Extra["FILE"]` title or a `ThumbTime["FILE"]` entry, the thumbnail
+    is annotated at the top-left with that text (and the time in
+    parentheses when ThumbTime is set).  A second annotation in the centre
+    shows "VIDEO-->", prefixed with the segment count for files that will
+    be split (e.g. "3 files VIDEO-->").
+
+    The thumbnail's EXIF is copied from the video and its DateTimeOriginal
+    / CreateDate / ModifyDate / mtime are set to one second before the
+    video's CreateDate.
+
+    Config var: `Thumb`. Default: `no`.
+
 - **-n**
 
     No-execute / dry-run.  Validate inputs and create config file
@@ -272,8 +293,10 @@ vid-tag looks for and assigns to its internal `gp*` globals.
     Title="..."                  # pEventTitle       (-E)
     Keyword="word, word"         # pKeyword          (-k)
     TimeZone="UTC[+-]H[:MM]"     # pTimeZone         (-z)
+    Thumb="yes"                  # pThumb            (-T)
     Extra["FILE1"]="extra title for FILE1"   # optional, per-file
     Extra["FILE2"]="extra title for FILE2"   # ...
+    ThumbTime["FILE1"]="MM:SS or HH:MM:SS"   # optional, per-file
 
 Because the file is just bash, you can include comments (lines
 starting with `#`) and may even compute values dynamically.  The
@@ -351,7 +374,7 @@ the testCli\*Slow tests.
 
 Required: Linux OS (see CAVEATS for Windows and MacOS)
 
-Required: bash, exiftool, ffmpeg, sed
+Required: bash, exiftool, ffmpeg, convert, sed
 
 Optional: vid-tag.test
 
@@ -439,4 +462,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.1
+cVer=2.2

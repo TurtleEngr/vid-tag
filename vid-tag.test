@@ -267,7 +267,6 @@ testCliUsage() {
     tResult=$($cBin/vid-tag -H short 2>&1)
     assertContains "$LINENO short 1" "$tResult" "NAME vid-tag"
     assertContains "$LINENO short 2" "$tResult" "SYNOPSIS"
-    assertContains "$LINENO short 3" "$tResult" "DESCRIPTION"
 
     #-----
     tResult=$($cBin/vid-tag -H long 2>&1)

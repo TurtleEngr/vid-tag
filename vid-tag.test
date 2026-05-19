@@ -218,7 +218,7 @@ setUp() {
     gpNameLong="TBD"
     gpNameShort="TBD"
     gpTimeZone="local"
-    gpThumb="yes"
+    gpThumb="no"
     gpNoExec=0
     gpVerbose=0
     gpDebug=0

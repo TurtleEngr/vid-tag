@@ -330,7 +330,7 @@ Examples:
 
 Generate thumbnail images for each input video.
 
-Config var: C<Thumb>.  Default: C<yes> (no conversion).
+Config var: C<Thumb>.  Default: C<no>
 
 The thumbnail is a JPG with the same base name as the renamed video
 file, extracted with ffmpeg from a single frame and then annotated
@@ -711,7 +711,7 @@ fSetGlobals() {
     gpFilePat=${gpFilePat:-'%d_%e_%p_%f'}
     gpNameLong=${gpNameLong:-"First Last"}
     gpNameShort=${gpNameShort:-"TBD"}
-    gpThumb=${gpThumb:-"yes"}
+    gpThumb=${gpThumb:-"no"}
     gpTimeZone=${gpTimeZone:-"local"}
     gpTitlePat=${gpTitlePat:-'%D, %c, %E, by %P.'}
 

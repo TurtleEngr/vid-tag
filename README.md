@@ -214,7 +214,7 @@ time.
 
     Generate thumbnail images for each input video.
 
-    Config var: `Thumb`.  Default: `yes` (no conversion).
+    Config var: `Thumb`.  Default: `no`
 
     The thumbnail is a JPG with the same base name as the renamed video
     file, extracted with ffmpeg from a single frame and then annotated

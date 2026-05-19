@@ -113,7 +113,7 @@ pkg/vid-tag-$(cVer).zip :
 	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
 
 pkg/vid-tag-test-$(cVer).zip :
-	zip $@ vid-tag.test bash-com.test shunit2.1
+	zip $@ vid-tag.test shunit2.1
 
 pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	zip $@ $^

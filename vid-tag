@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# $Source: /repo/video.cvs/studio/probonophoto/label/vid-tag,v $
- $Revision: 1.12 $ $Date: 2026/04/29 04:40:48 $ GMT
+set -u
 
 # Naming Convention
 # gpVar - command line parameters. These can override gcVars with same
 #         base name.
-# gcVar - config vars that are read from a config file.
+# cgVar - User config vars
 # gVar  - global variables. Should be few. Use functions to reduce these.
 # cVar  - These are global config vars, fixed values for the script.
 # pVar  - a positional variable passed into a function (local).
@@ -13,58 +12,10 @@
 # fFunction  - a function unique to this script
 # fComFunction - Most functions in bash-com.inc begin with fCom
 
-set -u
-
-export cVer=2.3.1
-export cBin
-export cExampleFile
-export cOutputDir
-
-# Internal globals
-export gFile
-export gFileDate
-export gFileDateFull
-export gFileDateLong
-export gFileDateShort
-export gFileDateTouch
-
-# External globals (set externally or by cmd line options)
-declare -lx gpEventId
-export gpCaption
-export gpConfLocal
-export gpCopyright
-export gpDebug
-export gpEventCity
-export gpEventFileList
-export gpEventKeyword
-export gpEventTitle
-export gpFilePat
-export gpNameLong
-export gpNameShort
-export gpNoExec
-export gpThumb
-export gpTimeZone
-export gpTitlePat
-
-# Captured command line for the example file.  Set in vid-tag main.
-export gpCmdLine
-
-# Per-file collection arrays used by fExample.  Indexed by gExampleIdx.
-declare -ag gExampleOrigNames
-declare -ag gExampleNewNames
-declare -ag gExampleTitles
-declare -ag gExampleCreateDates
-declare -ig gExampleIdx
-
-# Per-file extras: keyed by exact file basename (case-sensitive).
-declare -Ag gExtraMap
-
-# Per-file thumb times: keyed by exact file basename (case-sensitive).
-declare -Ag gThumbMap
-
 # ========================================
 # Main
 
+export cVer=2.3.2
 export cName=${BASH_SOURCE##*/}
 
 # Save original command line for fExample.  Done before any parsing so
@@ -76,10 +27,11 @@ export gpCmdLine="$cName $*"
 if [[ -z "$PWD" ]]; then
     PWD=$(pwd)
 fi
-cCurDir=$PWD
+export cCurDir=$PWD
 
 # -------------------
 # Locate the directory that contains this script (and bash-com.inc).
+export cBin
 
 #tBin=home
 tBin=this

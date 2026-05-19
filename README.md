@@ -333,27 +333,31 @@ overrides), so the next run will only need the file list.
 
 # ERRORS
 
-    + Missing one or more required programs.
-    + Syntax error in vid-tag.conf
-    + Value required for option: -?
-    + Unknown option: ?
-    + Directory ? is not writable.
-    + Missing pEventId, see required -e option.
-    + -t pFilePat is missing % options
-    + -t pTitlePat is missing % options
-    + Invalid TimeZone: ? (expected UTC[+-]H[:MM] or 'local')
-    + No input files given. Use -h for help.
-    + File not found: ?
-    + Failed to convert: '?' from TimeZone=?
+Processing will stop with any of these.
 
-Warnings (processing continues):
+    Missing one or more required programs.
+    Syntax error in vid-tag.conf
+    Value required for option: -?
+    Unknown option: ?
+    Directory ? is not writable.
+    Missing pEventId, see -e option.
+    -t pFilePat is missing % options
+    -t pTitlePat is missing % options
+    Invalid TimeZone: ? (expected UTC[+-]H[:MM] or 'local')
+    No input files given. Use -h for help.
+    File not found: ?
+    Failed to convert: '?' from TimeZone=?
 
-    + Missing some some optional programs.
-    + No CreateDate in ?; using file mtime.
-    + output/? already exists, skipping.
-    + ? not found in output/; skipping.
-    + target exists, skipping: ? -> ?
-    + exiftool returned error? on ?
+## Warnings
+
+Processing will continue.
+
+    Missing some some optional programs.
+    No CreateDate in ?; using file mtime.
+    output/? already exists, skipping.
+    ? not found in output/; skipping.
+    target exists, skipping: ? -> ?
+    exiftool returned error? on ?
 
 # ENVIRONMENT
 
@@ -483,4 +487,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.3.1
+cVer=2.3.2

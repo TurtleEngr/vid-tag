@@ -1,6 +1,6 @@
 set -u
 
-export cVer=2.3.1
+export cVer=2.3.2
 export cBin
 export cExampleFile
 export cOutputDir
@@ -451,27 +451,31 @@ overrides), so the next run will only need the file list.
 
 =head1 ERRORS
 
-    + Missing one or more required programs.
-    + Syntax error in vid-tag.conf
-    + Value required for option: -?
-    + Unknown option: ?
-    + Directory ? is not writable.
-    + Missing pEventId, see required -e option.
-    + -t pFilePat is missing % options
-    + -t pTitlePat is missing % options
-    + Invalid TimeZone: ? (expected UTC[+-]H[:MM] or 'local')
-    + No input files given. Use -h for help.
-    + File not found: ?
-    + Failed to convert: '?' from TimeZone=?
+Processing will stop with any of these.
 
-Warnings (processing continues):
+    Missing one or more required programs.
+    Syntax error in vid-tag.conf
+    Value required for option: -?
+    Unknown option: ?
+    Directory ? is not writable.
+    Missing pEventId, see -e option.
+    -t pFilePat is missing % options
+    -t pTitlePat is missing % options
+    Invalid TimeZone: ? (expected UTC[+-]H[:MM] or 'local')
+    No input files given. Use -h for help.
+    File not found: ?
+    Failed to convert: '?' from TimeZone=?
 
-    + Missing some some optional programs.
-    + No CreateDate in ?; using file mtime.
-    + output/? already exists, skipping.
-    + ? not found in output/; skipping.
-    + target exists, skipping: ? -> ?
-    + exiftool returned error? on ?
+=head2 Warnings
+
+Processing will continue.
+
+    Missing some some optional programs.
+    No CreateDate in ?; using file mtime.
+    output/? already exists, skipping.
+    ? not found in output/; skipping.
+    target exists, skipping: ? -> ?
+    exiftool returned error? on ?
 
 =for comment =head1 EXAMPLES
 
@@ -605,7 +609,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.3.1
+cVer=2.3.2
 
 =cut
 
@@ -688,7 +692,6 @@ fSetGlobals() {
     # -------------------
     # Output directory constant
     cOutputDir="output"
-    
     cExampleFile="vid-tag-example.txt"
 
     # -------------------
@@ -704,11 +707,11 @@ fSetGlobals() {
     gpEventFileList=${gpEventFileList:-""}
     gpEventKeyword=${gpEventKeyword:-"TBD"}
     gpEventId=${gpEventId:-""}
-    gpEventTitle=${gpEventTitle:-"TBD"}
+    gpEventTitle=${gpEventTitle:-"Event Title"}
     gpFilePat=${gpFilePat:-'%d_%e_%p_%f'}
-    gpNameLong=${gpNameLong:-"TBD"}
+    gpNameLong=${gpNameLong:-"First Last"}
     gpNameShort=${gpNameShort:-"TBD"}
-    gpThumb=${gpThumb:-"no"}
+    gpThumb=${gpThumb:-"yes"}
     gpTimeZone=${gpTimeZone:-"local"}
     gpTitlePat=${gpTitlePat:-'%D, %c, %E, by %P.'}
 
@@ -717,15 +720,16 @@ fSetGlobals() {
     # fThumbAddLabel).  cgThumbTimeDefault is the ffmpeg -ss value used
     # when no ThumbTime is set for a file; the rest are convert(1)
     # option strings inserted verbatim into the annotate command.
-    cgThumbTimeDefault="00:00:05"
-    cgThumbSize="-pointsize 45"
-    cgThumbMax="69"
-    cgThumbFont="-font times-roman"
-    cgThumbColor="-fill white"
     cgThumbBgColor="-undercolor black"
+    cgThumbColor="-fill white"
+    cgThumbFont="-font times-roman"
     cgThumbGravity="-gravity northwest -annotate +50+50"
-    cgThumbTextGravity="-gravity east -annotate +50+0"
+    cgThumbMax="68"
+    cgThumbPre="5"
+    cgThumbSize="-pointsize 45"
     cgThumbText="VIDEO-->"
+    cgThumbTextGravity="-gravity east -annotate +50+0"
+    cgThumbTimeDefault="00:00:05"
 
     # -------------------
     # Per-file globals populated by fReadFileDate / fConvertDate
@@ -1748,14 +1752,14 @@ fMakeThumbnail() {
     # ----- Copy EXIF from the video, with times 1 sec earlier -----
     # gFileDate is exiftool format "YYYY:MM:DD HH:MM:SS".  date(1)
     # accepts "YYYY-MM-DD HH:MM:SS" for arithmetic, so normalise the
-    # date colons before subtracting one second.  Use "1 second ago"
+    # date colons before subtracting.  Use "$cgThumbPre second ago"
     # rather than "- 1 second": the latter is parsed by GNU date(1) as
     # a -01 UTC offset, not as subtraction.
     tDate="${gFileDate%% *}"
     tTimeOnly="${gFileDate##* }"
     tNorm="${tDate//:/-} $tTimeOnly"
-    tThumbDate=$('date' -d "$tNorm 1 second ago" +"%Y:%m:%d %H:%M:%S")
-    tTouchDate=$('date' -d "$tNorm 1 second ago" +"%Y-%m-%d %H:%M:%S")
+    tThumbDate=$('date' -d "$tNorm $cgThumbPre second ago" +"%Y:%m:%d %H:%M:%S")
+    tTouchDate=$('date' -d "$tNorm $cgThumbPre second ago" +"%Y-%m-%d %H:%M:%S")
 
     fLog -p info \
         -m "exiftool -TagsFromFile $pRenamed -all:all -DateTimeOriginal=$tThumbDate ... $tThumb" \

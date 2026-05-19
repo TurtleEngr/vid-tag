@@ -3,7 +3,7 @@
 # $Revision: 1.10 $ $Date: 2026/04/29 18:27:22 $ GMT
 set -u
 
-export cVer=2.3.1
+export cVer=2.3.2
 
 # --------------------------------
 fUsageTest() {
@@ -117,7 +117,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright
 
-cVer=2.3.1
+cVer=2.3.2
 
 =cut
 EOF
@@ -211,17 +211,19 @@ setUp() {
     gpEventTitle="TBD"
     gpEventKeyword="TBD"
     gpEventFileList=""
-    gpCaption="Copyright TERMS"
-    gpCopyright="Copyright NAME YYYY"
+    gpCaption="Copyright %P %d"
+    gpCopyright="Copyright %P %d"
     gpFilePat='%d_%e_%p_%f'
     gpTitlePat='%D, %c, %E, by %P.'
     gpNameLong="TBD"
     gpNameShort="TBD"
     gpTimeZone="local"
-    gpThumb="no"
+    gpThumb="yes"
     gpNoExec=0
     gpVerbose=0
     gpDebug=0
+
+    cgThumbPre="5"
 
     # Per-file extras: populated by fLoadConf from Extra[...] lines.
     declare -gA gExtraMap=()
@@ -1259,6 +1261,7 @@ testCliThumb_Enabled() {
     local tVidDate
     local tThumbDate
     local tArtist
+    local tExpectDate
 
     fHelperMakeSyntheticVideo "$tVid" 15 "2026-01-15T10:30:00Z"
     assertTrue "$LINENO synth vid created" "[ -f $tVid ]"
@@ -1285,21 +1288,22 @@ CONF
     assertTrue "$LINENO video exists" "[ -f $tVideo ]"
     assertTrue "$LINENO thumb exists" "[ -f $tThumb ]"
 
-    # ----- Thumb CreateDate is one second before video's -----
+    # ----- Thumb CreateDate is cgThumbPre second before video's -----
     tVidDate=$(exiftool   -s3 -CreateDate "$tVideo")
+    tExpectDate=$('date' --date="2026-01-15 10:30:00 $cgThumbPre second ago" +'%Y:%m:%d %T')
     tThumbDate=$(exiftool -s3 -CreateDate "$tThumb")
     assertEquals "$LINENO video CreateDate" "2026:01:15 10:30:00" "$tVidDate"
-    assertEquals "$LINENO thumb CreateDate" "2026:01:15 10:29:59" "$tThumbDate"
+    assertEquals "$LINENO thumb CreateDate" "$tExpectDate" "$tThumbDate"
 
     # ----- And DateTimeOriginal / ModifyDate are also -1s -----
-    assertEquals "$LINENO thumb DateTimeOrig" "2026:01:15 10:29:59" \
+    assertEquals "$LINENO thumb DateTimeOrig" "$tExpectDate" \
         "$(exiftool -s3 -DateTimeOriginal "$tThumb")"
-    assertEquals "$LINENO thumb ModifyDate"   "2026:01:15 10:29:59" \
+    assertEquals "$LINENO thumb ModifyDate"   "$tExpectDate" \
         "$(exiftool -s3 -ModifyDate "$tThumb")"
 
     # ----- mtime is also one second earlier -----
-    assertEquals "$LINENO thumb mtime" "2026-01-15 10:29:59" \
-        "$(date -d "$(stat -c %y "$tThumb")" +"%Y-%m-%d %H:%M:%S")"
+    assertEquals "$LINENO thumb mtime" "$tExpectDate" \
+        "$(date -d "$(stat -c %y "$tThumb")" +"%Y:%m:%d %H:%M:%S")"
 
     # ----- Tags copied from video to thumb -----
     tArtist=$(exiftool -s3 -Artist "$tThumb")

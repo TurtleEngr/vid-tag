@@ -1,3 +1,4 @@
+#!/bin/bash
 set -u
 
 export cVer=2.3.2
@@ -370,7 +371,7 @@ Output usage in a specific style:
     man         - man page
     html        - HTML page
     md          - Markdown
-    
+
     int         - Output internal documentation as text.
     int-html    - Output internal documentation as html.
     int-md      - Output internal documentation as markdown.
@@ -509,7 +510,7 @@ This package is for testing the vid-tag script. See the NOTES section
 =head2 vid-tag-test-input.zip (4.5G)
 
 Optional video files used by vid-tag.test. Only needed for
-the testCli*Slow tests. 
+the testCli*Slow tests.
 
     MVI_0107.MP4
     MVI_0110.MP4
@@ -968,7 +969,7 @@ fSaveConf() {
                 echo "ThumbTime[\"$(fEscConf "$tKey")\"]=\"$(fEscConf "${gThumbMap[$tKey]}")\""
             done
         fi
-    } > "$gpConfLocal"
+    } >"$gpConfLocal"
 
     return 0
 
@@ -1020,13 +1021,14 @@ fGetOpt() {
             h) fUsage long ;;
             H) fUsage "$OPTARG" ;;
             v) ((++gpVerbose)) ;;
-            V) echo "vid-tag version: $cVer"
-               exit 0
-               ;;
+            V)
+                echo "vid-tag version: $cVer"
+                exit 0
+                ;;
             d) ((++gpDebug)) ;;
             # Problem arguments
-            :)  fError -m "Value required for option: -$OPTARG" -l $LINENO ;;
-            \?) fError -m "Unknown option: $OPTARG"             -l $LINENO ;;
+            :) fError -m "Value required for option: -$OPTARG" -l $LINENO ;;
+            \?) fError -m "Unknown option: $OPTARG" -l $LINENO ;;
         esac
     done
     ((--OPTIND))
@@ -1105,7 +1107,7 @@ fConvertTimeZone() {
     # POSIX TZ semantics apply: e.g. gpTimeZone="utc-1" represents a
     # zone 1 hour AHEAD of UTC (just as TZ="UTC-1" does in the env).
     # The output is in the host's local time, in exiftool's format.
-    
+
     local pRaw="$1"
 
     local tDate
@@ -1131,7 +1133,7 @@ fConvertTimeZone() {
     tDate="${tDate//:/-}"
 
     tFixed=$('date' --date="TZ=\"$gpTimeZone\" $tDate $tTime" \
-                    +'%Y:%m:%d %H:%M:%S' 2>/dev/null)
+        +'%Y:%m:%d %H:%M:%S' 2>/dev/null)
     if [[ -z "$tFixed" ]]; then
         fError -m "Failed to convert: '$pRaw' from TimeZone=$gpTimeZone" -l $LINENO
         return 1
@@ -1166,17 +1168,17 @@ fConvertDate() {
     # Given an exiftool date string "YYYY:MM:DD HH:MM:SS", populate the
     # four gFileDate* globals used by fApplyPattern and fProcessFile.
     local pRaw="$1"
-    
+
     local tNorm
 
     # Normalise date separator: "YYYY:MM:DD HH:MM:SS" -> "YYYY-MM-DD HH:MM:SS"
-    tNorm=$(echo "$pRaw" \
-        | sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\)/\1-\2-\3/')
+    tNorm=$(echo "$pRaw" |
+        sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\)/\1-\2-\3/')
 
-    gFileDateShort=$( 'date' -d "$tNorm" +"%Y-%m-%d")
-    gFileDateLong=$(  'date' -d "$tNorm" +"%Y-%m-%d %a")
-    gFileDateFull=$(  'date' -d "$tNorm" +"%Y-%m-%d_%H:%M:%S")
-    gFileDateTouch=$( 'date' -d "$tNorm" +"%Y%m%d%H%M.%S")
+    gFileDateShort=$('date' -d "$tNorm" +"%Y-%m-%d")
+    gFileDateLong=$('date' -d "$tNorm" +"%Y-%m-%d %a")
+    gFileDateFull=$('date' -d "$tNorm" +"%Y-%m-%d_%H:%M:%S")
+    gFileDateTouch=$('date' -d "$tNorm" +"%Y%m%d%H%M.%S")
     return 0
 
     # shellcheck disable=SC2317
@@ -1234,7 +1236,7 @@ fApplyPattern() {
     # $1 = pattern string   $2 = original basename (for %f)
     local pPattern="$1"
     local pFile="$2"
-    
+
     local tR="$pPattern"
 
     # Expand longer / upper-case tokens first where case-only pairs exist.
@@ -1327,8 +1329,8 @@ fExampleCollect() {
     local tNewName
     local tNewTitle
 
-    tNewName=$(  fApplyPattern "$gpFilePat"  "$pBase")
-    tNewTitle=$( fApplyPattern "$gpTitlePat" "$pBase")
+    tNewName=$(fApplyPattern "$gpFilePat" "$pBase")
+    tNewTitle=$(fApplyPattern "$gpTitlePat" "$pBase")
     if [[ -n "${gExtraMap[$pBase]:-}" ]]; then
         tNewTitle="$tNewTitle ${gExtraMap[$pBase]}."
     fi
@@ -1389,7 +1391,7 @@ fExampleCollectSplit() {
     if [[ -z "$tLength" ]]; then
         return 0
     fi
-    IFS=':' read -r tH tM tS <<< "$tLength"
+    IFS=':' read -r tH tM tS <<<"$tLength"
     IFS=' '
 
     # Strip any leading zeros so bash arithmetic doesn't treat them as octal.
@@ -1405,7 +1407,7 @@ fExampleCollectSplit() {
 
     # ceil(total_seconds / 600) - matches the segment count ffmpeg's
     # -segment_time 00:10:00 muxer will emit.
-    tNumParts=$(( (tMin * 60 + tS + 599) / 600 ))
+    tNumParts=$(((tMin * 60 + tS + 599) / 600))
 
     # Parts share the renamed root with a -NN suffix and lowercase ".mp4"
     tNewName=$(fApplyPattern "$gpFilePat" "$pBase")
@@ -1419,7 +1421,7 @@ fExampleCollectSplit() {
         tNewTitle="$tNewTitle ${gExtraMap[$pBase]}."
     fi
 
-    for (( tIdx=0; tIdx < tNumParts; tIdx++ )); do
+    for ((tIdx = 0; tIdx < tNumParts; tIdx++)); do
         tPartName=$(printf "%s-%02d.mp4" "$tNewName" "$tIdx")
         ((tIncMin = tIdx * 10))
         tPartTime=$(fAddMin "$pCreateDate" $tIncMin)
@@ -1510,11 +1512,11 @@ fExample() {
         echo "Command:"
         echo "    $tCmd"
         echo "Files:"
-        for (( tIdx=0; tIdx < gExampleIdx; tIdx++ )); do
+        for ((tIdx = 0; tIdx < gExampleIdx; tIdx++)); do
             echo "    ${gExampleOrigNames[$tIdx]} -> $cOutputDir/${gExampleNewNames[$tIdx]}"
         done
         echo "Exif Changes:"
-        for (( tIdx=0; tIdx < gExampleIdx; tIdx++ )); do
+        for ((tIdx = 0; tIdx < gExampleIdx; tIdx++)); do
             echo " "
             echo "${gExampleNewNames[$tIdx]}"
             echo "    Title = ${gExampleTitles[$tIdx]}"
@@ -1537,7 +1539,7 @@ fExample() {
             echo "    Media Create Date = (see Create Date)"
             echo "    Media Modify Date = (see Create Date)"
         done
-    } > "$cExampleFile"
+    } >"$cExampleFile"
 
     fLog -p info -m "Created $cExampleFile" -l $LINENO
     return 0
@@ -1596,7 +1598,7 @@ fAddMin() {
     tTime="${tDate##* }"
     tDate="${tDate%% *}"
 
-    IFS=':' read -r tH tM tS <<< "$tTime"
+    IFS=':' read -r tH tM tS <<<"$tTime"
     IFS=' '
 
     # Remove any leading zeros for arithmetic
@@ -1852,15 +1854,15 @@ fProcessFile() {
 
     # ----------
     # Get the file's new name and the Title, using the patterns
-    tNewName=$(  fApplyPattern "$gpFilePat"  "$tBase")
-    tNewTitle=$( fApplyPattern "$gpTitlePat" "$tBase")
+    tNewName=$(fApplyPattern "$gpFilePat" "$tBase")
+    tNewTitle=$(fApplyPattern "$gpTitlePat" "$tBase")
     if [[ -n "${gExtraMap[$tBase]:-}" ]]; then
         tNewTitle="$tNewTitle ${gExtraMap[$tBase]}."
     fi
 
     # Expand any pattern tokens in Caption and Copyright.
-    tCaption=$(   fApplyPattern "$gpCaption"   "$tBase")
-    tCopyright=$( fApplyPattern "$gpCopyright" "$tBase")
+    tCaption=$(fApplyPattern "$gpCaption" "$tBase")
+    tCopyright=$(fApplyPattern "$gpCopyright" "$tBase")
 
     # ----------
     # Collision guard before rename.
@@ -1899,7 +1901,7 @@ fProcessFile() {
             -MediaModifyDate="$gFileDate"
         )
     fi
-    tCmd+=( "$tBase" )
+    tCmd+=("$tBase")
     fLog -p info -m "Rename: $tBase -> $tNewName" -l $LINENO
     fLog -p info -m "Set new meta values" -l $LINENO
     fLog -p debug-1 -m "Cmd: ${tCmd[*]}" -l $LINENO
@@ -1921,7 +1923,7 @@ fProcessFile() {
     # ----------
     # See if the file needs to be split. I.e. greater than 10 min
     tLength=$(ffmpeg -i $tNewName 2>&1 | grep -oP 'Duration: \K[\d:]+(?=\.)')
-    IFS=':' read -r tH tM tS <<< "$tLength"
+    IFS=':' read -r tH tM tS <<<"$tLength"
     IFS=' '
     ((tMin = $tH * 60 + $tM))
 
@@ -1929,7 +1931,7 @@ fProcessFile() {
     # thumbnail's "VIDEO-->" label prefix and the split-or-not branch.
     tNumParts=1
     if [[ $tMin -gt 10 ]]; then
-        tNumParts=$(( (tMin * 60 + 10#$tS + 599) / 600 ))
+        tNumParts=$(((tMin * 60 + 10#$tS + 599) / 600))
     fi
 
     # ----------
@@ -1955,11 +1957,11 @@ fProcessFile() {
     for tFile in ${tNewName%.*}-*.mp4; do
         fLog -p info -m "exiftool -TagsFromFile $tNewName -all:all $tFile" -l $LINENO
         exiftool -TagsFromFile $tNewName -all:all $tFile >/dev/null 2>&1
-        
+
         # Increment the times for the parts
         tPart=${tFile%.mp4}
         tPart=${tPart##*-}
-        ((tIncMin=tPart * 10))
+        ((tIncMin = tPart * 10))
         tNewTime=$(fAddMin "$gFileDate" $tIncMin)
         exiftool \
             -DateTimeOriginal="$tNewTime" \

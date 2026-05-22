@@ -756,7 +756,6 @@ Calls:
 EOF
 } # testComFunctions
 
-
 # --------------------------------
 testComLogFallback() {
     local tResult
@@ -1172,7 +1171,7 @@ testComGetConfig() {
         fComSetConfig $tOpt -k script.testit.test-tbd-get -v "TBD"
 
         if [[ $gpDebug -ne 0 ]]; then
-           cat $gpConfLocal
+            cat $gpConfLocal
         fi
 
         tResult=$(fComGetConfig $tOpt -k script.testit.test-str-get)
@@ -1180,7 +1179,7 @@ testComGetConfig() {
 
         tResult=$(fComGetConfig $tOpt -k script.testit.test-str-get)
         assertEquals "$LINENO $tOpt str" "test a string" "$tResult"
-    
+
         fComGetConfig $tOpt -k script.testit.test-str-get >/dev/null
         assertEquals "$LINENO $tOpt str" "test a string" "$gResponse"
 
@@ -1192,7 +1191,7 @@ testComGetConfig() {
 
         tResult=$(fComGetConfig $tOpt -b -k script.testit.test-bool-get)
         assertEquals "$LINENO $tOpt bool" "true" "$tResult"
-    
+
         fComGetConfig $tOpt -b -k script.testit.test-bool-get >/dev/null
         assertEquals "$LINENO $tOpt bool" "true" "$gResponse"
 
@@ -1217,7 +1216,7 @@ testComGetConfig() {
         assertFalse "$LINENO -e TBD rc" "$?"
         assertContains "$LINENO -e TBD msg" "$tResult" "should not be set to: TBD"
     done
-    
+
     return 0
 
     cat <<EOF >/dev/null

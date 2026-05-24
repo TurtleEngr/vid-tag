@@ -25,7 +25,7 @@ export gpCmdLine="$cName $*"
 # -------------------
 # Set cCurDir because PWD may be unset under cron.
 if [[ -z "$PWD" ]]; then
-PWD=$(pwd)
+    PWD=$(pwd)
 fi
 export cCurDir=$PWD
 

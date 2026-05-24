@@ -9,26 +9,52 @@
 SHELL = /bin/bash
 cVer = 2.3.2
 
+mDepPkg = \
+	ffmpeg \
+	imagemagick \
+	libimage-exiftool-perl \
+	shellcheck \
+	tidy
+
+mReqProg = \
+	awk \
+	convert \
+	exiftool \
+	ffmpeg \
+	sed \
+	shfmt \
+	tr \
+	./bash-com.inc \
+	./bash-com.test \
+	./shunit2.1 \
+	./vid-tag \
+	./vid-tag.inc \
+	./vid-tag.test
+
 cRelServer = moria.whyayh.com
 cRelDIr = /rel/released/software/own/vid-tag/
 
-# --------------------
+# ----------------------------------------
 # Main targets
 
+# --------------------
 usage :
 	@echo 'Usage:'
 	@echo 'clean      - remove all backup files'
 	@echo 'dist-clean - remove all built files'
-	@echo 'update     - check for newer dependent files'
-	@echo 'build      - Update README and update cVer in files'
-	@echo 'get-test   - Get video files for tests 4.4GB'
+	@echo 'check      - check for newer dependent files'
+	@echo 'build      - Update in files'
+	@echo 'required-prog - get and check for required prog'
+	@echo 'config-git - Setup git for CI/CD and commit checks'
 	@echo 'test       - Quick tests (about 10sec)'
 	@echo 'test-all   - Test with video files; slow (about 16min)'
 	@echo 'package    - create the package zip file'
-	@echo 'release    - copy package to release server'
 	@echo 'package-test - create the test package zip file'
+	@echo 'get-test   - Get video files for tests 4.4GB'
+	@echo 'release    - copy package to release server'
 	@echo 'release-test - copy test package to release server'
 
+# --------------------
 clean :
 	-find . -type f -name '*~' -exec rm {} \;
 	-rm pod2htmd.tmp
@@ -37,18 +63,67 @@ dist-clean : clean
 	rm MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	rm -rf pkg
 
-update check : check-bash-com.inc check-bash-com.test check-shunit2.1
+# --------------------
+check : check-bash-com.inc check-bash-com.test check-shunit2.1
+	echo "If there are differences, copy from ~/bin"
 
+check-bash-com.inc : ~/bin/bash-com.inc
+	-diff $? bash-com.inc | grep -v Revision:
+
+check-bash-com.test : ~/bin/bash-com.test
+	-diff $? bash-com.test | grep -v Revision:
+
+check-shunit2.1 : ~/bin/shunit2.1
+	-diff $? shunit2.1 | grep -v Revision:
+
+# --------------------
 build : README.html
 	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
 	-git ci -am Updated
 
-get-test : pkg
-	cd pkg; curl -O https://$(cRelServer)$(cRelDIr)/vid-tag-test-input.zip
-	unzip pkg/vid-tag-test-input.zip
+README.html : README.md Makefile
+	-markdown $? >$@
+	-tidy -m -config ./tidyxhtml.conf $@
 
+README.md : vid-tag vid-tag.inc Makefile
+	-./vid-tag -H md >README.md
+
+# --------------------
+required-prog : install-prog
+	for i in $(mReqProg); do \
+		if ! which $$i; then \
+			echo "Error: missing $$i"; \
+			exit 1; \
+		fi; \
+	done
+
+install-prog : /usr/local/bin/shfmt
+	sudo apt-get install -y $(mDepPkg)
+
+
+/usr/local/bin/shfmt :
+	curl -u "guest:guest" -O https://$(cRelServer)//rel/archive/software/ThirdParty/shfmt/shfmt_v3.10.0_linux_amd64
+	chmod a+rx shfmt_*
+	sudo chown root:root shfmt_*
+	sudo mv -f shfmt_* /usr/local/bin
+	sudo ln -sf /usr/local/bin/shfmt_v3.10.0_linux_amd64 /usr/local/bin/shfmt
+
+# --------------------
+config-git : .gitattributes .git/hooks/pre-commit
+	if ! grep -q 'path = ../config/gitconfig.includes' .git/config; then \
+		echo '[include]' >>.git/config; \
+		echo '    path = ../config/gitconfig.includes' >>.git/config; \
+	fi
+
+.gitattributes : config/gitattributes
+	cp $? $@
+
+.git/hooks/pre-commit : config/pre-commit
+	cp $? $@
+
+# --------------------
 test : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	./vid-tag.test -T fast
 	./vid-tag -n -e testevent MVI_0107.MP4  MVI_0110.MP4  MVI_0746.MP4
@@ -58,12 +133,46 @@ test : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 test-all : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	./vid-tag.test -T all
 
+# --------------------
+install : build
+	cp -i vid-tag vid-tag.inc vid-tag.test ~/bin/
+
 package : build pkg pkg/vid-tag-$(cVer).zip
 	-git push --tags --force origin develop
+
+pkg :
+	mkdir -p $@
+
+pkg/vid-tag-$(cVer).zip :
+	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
 
 package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
 	-git push --tags origin develop
 
+pkg/vid-tag-test-$(cVer).zip :
+	zip $@ vid-tag.test shunit2.1
+
+# --------------------
+get-test : pkg
+	cd pkg; curl -O https://$(cRelServer)$(cRelDIr)/vid-tag-test-input.zip
+	unzip pkg/vid-tag-test-input.zip
+
+pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
+	zip $@ $^
+
+MVI_0107.MP4 :
+	read -p "You must have a user on moria. ^c to quit"
+	rsync -aP $(cRelServer):/home/video/ver/video/studio/portfolio/raw/$@ $@
+
+MVI_0110.MP4 :
+	read -p "You must have a user on moria. ^c to quit"
+	rsync -aP $(cRelServer):/home/video/ver/video/studio/portfolio/raw/$@ $@
+
+MVI_0746.MP4 :
+	read -p "You must have a user on moria. ^c to quit"
+	rsync -aP $(cRelServer):/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@
+
+# --------------------
 release : package
 	git tag -f v$(cVer)
 	git push --tags --force origin develop
@@ -82,51 +191,3 @@ release-test : package-test
 		$(cRelServer):$(cRelDIr)
 
 #		pkg/vid-tag-test-input.zip \
-
-
-install : build
-	cp -i vid-tag vid-tag.inc vid-tag.test ~/bin/
-
-# --------------------
-# Single targets
-
-README.md : vid-tag vid-tag.inc Makefile
-	-./vid-tag -H md >README.md
-
-README.html : README.md Makefile
-	-markdown $? >$@
-	-tidy -m -config ./tidyxhtml.conf $@
-
-check-bash-com.inc : ~/bin/bash-com.inc
-	-diff $? bash-com.inc | grep -v Revision:
-
-check-bash-com.test : ~/bin/bash-com.test
-	-diff $? bash-com.test | grep -v Revision:
-
-check-shunit2.1 : ~/bin/shunit2.1
-	-diff $? shunit2.1 | grep -v Revision:
-
-pkg :
-	mkdir -p $@
-
-pkg/vid-tag-$(cVer).zip :
-	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
-
-pkg/vid-tag-test-$(cVer).zip :
-	zip $@ vid-tag.test shunit2.1
-
-pkg/vid-tag-test-input.zip : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
-	zip $@ $^
-
-MVI_0107.MP4 :
-	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP $(cRelServer):/home/video/ver/video/studio/portfolio/raw/$@ $@
-
-MVI_0110.MP4 :
-	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP $(cRelServer):/home/video/ver/video/studio/portfolio/raw/$@ $@
-
-MVI_0746.MP4 :
-	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP $(cRelServer):/rel/archive/video/project/uucc/2026/2026-03-01/raw/cover/$@ $@
-

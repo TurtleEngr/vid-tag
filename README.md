@@ -434,6 +434,29 @@ for newer (maybe untested) versions (where the version number will
 likely be different from a released version). The "main" branch is
 where the official released code lives, with the vM.m.p tags.
 
+## For Developers
+
+The "main" branch is only for stable releases. Commits should be made
+to the "develop" branch.
+
+Run "make" with no targets to get the list of targets used to build
+the code and release packages.
+
+Getting started: run: "make required-prog git-config"
+
+When you make changes, increment the cVer Makefile and run "make
+build" Also, be sure to update vid-tag.test with tests for new
+functionality.
+
+Run "make test" for fast checks.
+
+Run "make test-all" to test with actual video files.
+
+If all OK, run "make install" to install a local copy.
+
+If sending to others "make package" then send them the zip file in
+pkg/.
+
 # CAVEATS
 
 This script is mainly for Linux systems. However, if you have CygWin
@@ -448,7 +471,7 @@ with an "issue" report (label it with "enhancement" or
 include other programs needed, configuration directions, and any
 changes you made to the scripts. If you know github, fork the vid-tag
 repo, add your changes, then send me a "pull" request, to the
-"develop" branch.
+"develop" branch. (See the For Developers section.)
 
 # DIAGNOSTICS
 

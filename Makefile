@@ -9,6 +9,8 @@
 SHELL = /bin/bash
 cVer = 2.3.3
 
+mInstallDir = ~/bin
+
 mDepPkg = \
 	ffmpeg \
 	imagemagick \
@@ -26,6 +28,9 @@ mReqProg = \
 	shellcheck \
 	tidy \
 	tr \
+	config/bash-fmt \
+	config/bash-lint \
+	config/rm-trailing-sp \
 	./bash-com.inc \
 	./bash-com.test \
 	./shunit2.1 \
@@ -37,6 +42,7 @@ mExternal = \
 	bash-com.inc \
 	bash-com.test \
 	config/bash-fmt \
+	config/bash-lint \
 	config/rm-trailing-sp \
 	shunit2.1
 
@@ -50,13 +56,14 @@ cRelDIr = /rel/released/software/own/vid-tag/
 usage :
 	@echo 'Usage:'
 	@echo 'clean      - remove all backup files'
-	@echo 'dist-clean - remove all built files'
+	@echo 'dist-clean - remove all built files (when done)'
 	@echo 'check-ext  - check for newer external files (optional)'
-	@echo 'required-prog - get and check for required prog'
-	@echo 'git-config - Setup git for CI/CD and commit checks'
+	@echo 'required-prog - get and check for required prog (first-time)'
+	@echo 'git-config - Setup git for CI/CD and commit checks (first-time)'
 	@echo 'build      - Update in files'
 	@echo 'test       - Quick tests (about 10sec)'
 	@echo 'test-all   - Test with video files; slow (about 16min)'
+	@echo 'get-test   - files needed for test-all (on-time)'
 	@echo 'install    - local install (optional)'
 	@echo 'package    - create the package zip file'
 	@echo 'package-test - create the test package zip file'
@@ -153,7 +160,7 @@ test-all : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 
 # --------------------
 install : build
-	cp -i vid-tag vid-tag.inc vid-tag.test ~/bin/
+	cp -i vid-tag vid-tag.inc vid-tag.test bash-com.inc bash-com.test $(mInstallDir)
 
 package : build pkg pkg/vid-tag-$(cVer).zip
 	-git push --tags --force origin develop
@@ -165,10 +172,9 @@ pkg/vid-tag-$(cVer).zip :
 	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
 
 package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
-	-git push --tags origin develop
 
 pkg/vid-tag-test-$(cVer).zip :
-	zip $@ vid-tag.test shunit2.1
+	zip $@ vid-tag.test bash-com.test shunit2.1
 
 # --------------------
 get-test : pkg

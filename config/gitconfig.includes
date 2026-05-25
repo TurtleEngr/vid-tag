@@ -1,0 +1,4 @@
+[include]
+        path = ../config/gitconfig.filter
+        path = ../config/gitconfig.gitflow
+        path = ../config/gitconfig.precommit

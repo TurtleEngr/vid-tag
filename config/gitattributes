@@ -1,0 +1,4 @@
+vid-tag filter=bash-fmt
+*.sh    filter=bash-fmt
+*.inc   filter=bash-fmt
+*.test  filter=bash-fmt

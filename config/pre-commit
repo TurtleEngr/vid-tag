@@ -1,0 +1,444 @@
+#!/bin/bash
+# This file is copied from gitproj doc/hooks/pre-commit to .git/hooks
+# These gitproj config hook vars control this script:
+#     pre-commit-enabled = if true, this script is enabled
+#     check-file-names = if true, "abnormal" file names will not be allowed
+#     check-for-big-files = if true, files bigger than
+#         binary-file-size cannot be committed.
+#     binary-file-size = defines the max size. # of bytes if no suffix.
+#         Suffixes: k,m,g
+
+# --------------------
+export gVerbose=true
+export gAgainst
+export gFileList=""
+export LC_ALL=C
+export gErr=0
+export gSrc=${BASH_SOURCE##*/}
+
+# --------------------
+fIsBinary() {
+    local pFile="$1"
+
+    grep -Hm1 '^' <"$pFile" 2>&1 | grep -qi 'binary' >/dev/null 2>&1
+    # Copied from: https://unix.stackexchange.com/questions/275516/is-there-a-convenient-way-to-classify-files-as-binary-or-text
+    return $?
+} # fIsBinary
+
+# --------------------
+fIsBash() {
+    local pFile="$1"
+
+    head -n 2 <"$pFile" | grep -Eq '#!/bin/bash|#!/usr/bin/env bash' >/dev/null 2>&1
+    return $?
+} # fIsBash
+
+# --------------------
+fReport() {
+    local pExpect=$1
+    local pResult=$2
+    local pFile=$3
+    local pMsg="$4"
+    local pLine=$5
+    local tErr=0
+
+    if [[ $pExpect -eq 0 && $pResult -ne 0 ]]; then
+        tErr=1
+    fi
+    if [[ $pExpect -eq 1 && $pResult -eq 0 ]]; then
+        tErr=1
+    fi
+    if [[ $tErr -eq 0 ]]; then
+        return 0
+    fi
+
+    let ++gErr
+    if [[ "$gVerbose" = "true" ]]; then
+        echo "$pFile $pMsg [$gSrc:$pLine]"
+    fi
+    gFileList="$gFileList $pFile"
+    git reset HEAD $pFile >/dev/null 2>&1
+    if [[ "${pFile%!*}" != "$pFile" ]]; then
+        pFile=$(echo $pFile | tr '!' ' ')
+        git reset HEAD "$pFile" >/dev/null 2>&1
+    fi
+    return 1
+} # fReport
+
+# --------------------
+fEnabled() {
+    local tEnabled
+
+    tEnabled=$(git config --get --bool gitproj.hook.pre-commit-enabled)
+    if [[ "$tEnabled" != "true" ]]; then
+        echo "Skipping pre-commit"
+        exit 0
+    fi
+    echo "Running pre-commit"
+    return 0
+} # fEnabled
+
+# --------------------
+fCheckFileNames() {
+    local tFile
+    local tResult
+
+    tResult=$(git config --get --bool gitproj.hook.check-file-names)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+
+    # Spaces in names really f**ks up scripts, so replace them with '!'
+    # another invalid character
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        tResult=$(echo -n "$tFile" | tr -d '[ -~]' | wc -c)
+        fReport 0 $tResult $tFile "has non-printable chars in name" $LINENO || continue
+
+        tResult=$(echo -n "$tFile" | tr -d 'a-zA-Z0-9/._-' | wc -c)
+        fReport 0 $tResult $tFile "has illegal chars in name" $LINENO || continue
+
+        tResult=$(echo -n "$tFile" | grep -Ei '(^|/)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)' | wc -c)
+        fReport 0 $tResult $tFile "has reserved words in name" $LINENO || continue
+
+        echo -n "$tFile" | grep -Eq '(\.\.+$)'
+        fReport 1 $? $tFile "has just periods in name" $LINENO || continue
+
+        echo -n "$tFile" | grep -Eq '\.$'
+        fReport 1 $? $tFile "has trailing period" $LINENO || continue
+    done
+
+    if [[ -n "$gFileList" ]]; then
+        let ++gErr
+        echo
+        echo "These files are not valid:"
+        echo "$gFileList" | fmt -w 10
+        cat <<EOF
+
+Names can only use letters, numbers, hypen, and periods.
+Names cannot begin with hyphens or end with periods.
+Names cannot be all periods.
+If you had a filename with spaces in it, the spaces were replaced with '!'.
+
+EOF
+        return 1
+    fi
+    return 0
+} # fCheckFileNames
+
+# --------------------
+fCheckWhiteSpace() {
+    local tFile
+    local tResult
+    # Note: DOS EOL files will give a false report.
+
+    tResult=$(git config --get --bool gitproj.hook.check-whitespace)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+
+    # If there are whitespace errors, print the offending file names
+    gFileList=""
+    for tFile in $(git diff-index --color=never --check --cached $gAgainst -- | tr ' ' '!' | awk '/trailing/ {gsub(/:.*/,"",$1); print $1}' | sort -u); do
+        tFile=${tFile%%:*}
+        fReport 0 1 $tFile "trailing whitespace" $LINENO
+    done
+    if [[ -n "$gFileList" ]]; then
+        let ++gErr
+        echo
+        echo "These files had trailing whitespaces (fix with: rm-trailing-sp):"
+        echo "$gFileList" | fmt -w 10
+        echo
+    fi
+    return 0
+} # fCheckWhiteSpace
+
+# --------------------
+fCheckForTabs() {
+    local tFile
+    local tResult
+    local tIncList
+    local tExcList
+
+    tResult=$(git config --get --bool gitproj.hook.check-for-tabs)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+
+    tIncList=$(git config --get gitproj.hook.tab-include-list)
+    tExcList=$(git config --get gitproj.hook.tab-exclude-list)
+    if [[ -z "$tIncList" ]]; then
+        tIncList='*'
+    fi
+
+    # If there are tab, in tIncList, but not tExcList, print file
+    # Also skip binary files
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        if [[ ! -f "$tFile" ]]; then
+            continue
+        fi
+        if fIsBinary $tFile; then
+            continue
+        fi
+        echo $tFile | grep -qvE "$tIncList" >/dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            continue
+        fi
+        if [[ -n "$tExcList" ]]; then
+            echo $tFile | grep -qE "$tExcList" >/dev/null 2>&1
+            if [[ $? -eq 0 ]]; then
+                continue
+            fi
+        fi
+        # -P, perl, is needed, because \t is not tab in POSIX for grep
+        if grep -qP '\t' $tFile; then
+            tFile=${tFile%%:*}
+            fReport 0 1 $tFile "tabs found" $LINENO
+        fi
+    done
+
+    if [[ -n "$gFileList" ]]; then
+        let ++gErr
+        echo
+        echo "These files had tabs in them (fix with: expand or bash-fmt):"
+        echo "$gFileList" | fmt -w 10
+        echo
+    fi
+    return 0
+} # fCheckForTabs
+
+# --------------------
+fCheckSyntax() {
+    local tFile
+    local tResult
+
+    tResult=$(git config --get --bool gitproj.hook.check-bash-syntax)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        if [[ ! -f "$tFile" ]]; then
+            continue
+        fi
+        if fIsBinary $tFile; then
+            continue
+        fi
+        if ! fIsBash $tFile; then
+            continue
+        fi
+
+        if ! bash -n $tFile >/dev/null 2>&1; then
+            tFile=${tFile%%:*}
+            fReport 0 1 $tFile "bash syntax error" $LINENO
+        fi
+    done
+
+    if [[ -n "$gFileList" ]]; then
+        let ++gErr
+        echo
+        echo "These bash files had syntax errors:"
+        echo "$gFileList" | fmt -w 10
+        echo
+    fi
+    return 0
+} # fCheckSyntax
+
+# --------------------
+fCheckShell() {
+    local tFile
+    local tResult
+    local tSkip
+
+    tResult=$(git config --get --bool gitproj.hook.check-bash-shell)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+    if ! which shellcheck >/dev/null 2>&1; then
+        echo "Missing shellcheck [$LINENO]"
+        return 0
+    fi
+
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        if [[ ! -f "$tFile" ]]; then
+            continue
+        fi
+        if fIsBinary $tFile; then
+            continue
+        fi
+        if ! fIsBash $tFile; then
+            continue
+        fi
+
+        tSkip='SC1090,SC2003,SC2086,SC2088,SC2155,SC2164,SC2219,SC2230,SC2103,SC2181'
+        if ! shellcheck -x -e $tSkip "$tFile" >/dev/null 2>&1; then
+            echo "Warning: shellcheck errors in $tFile. See bash-lint [$LINENO]" >&2
+            tFile=${tFile%%:*}
+            gFileList="$gFileList $tFile"
+        fi
+    done
+
+    if [[ -n "$gFileList" ]]; then
+        echo
+        echo "These bash files had shellcheck errors:"
+        echo "$gFileList" | fmt -w 10
+        echo
+    fi
+    return 0
+} # fCheckShell
+
+# --------------------
+fFixFmt() {
+    local tFile
+    local tResult
+
+    tResult=$(git config --get --bool gitproj.hook.fix-bash-fmt)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+    if ! which bash-fmt >/dev/null 2>&1; then
+        echo "Missing bash-fmt [$LINENO]"
+        return 0
+    fi
+
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        if [[ ! -f "$tFile" ]]; then
+            continue
+        fi
+        if fIsBinary $tFile; then
+            continue
+        fi
+        if ! fIsBash $tFile; then
+            continue
+        fi
+
+        if ! bash-fmt "$tFile" >/dev/null 2>&1; then
+            echo "Warning: Reformatted $tFile. See bash-fmt [$LINENO]" >&2
+            tFile=${tFile%%:*}
+            gFileList="$gFileList $tFile"
+        fi
+    done
+
+    if [[ -n "$gFileList" ]]; then
+        echo
+        echo "These bash files were reformatted:"
+        echo "$gFileList" | fmt -w 10
+        echo
+    fi
+    return 0
+} # fFixFmt
+
+# --------------------
+fCheckNotRaw() {
+    local tFile
+    local tResult
+
+    tResult=$(git config --get --bool gitproj.hook.check-in-raw)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        echo $tFile | grep -q '^raw/'
+        fReport 1 $? $tFile "Do not commit files in raw/" $LINENO
+    done
+
+    if [[ -n "$gFileList" ]]; then
+        let ++gErr
+        echo
+        echo "These files should not be managed in git:"
+        echo "$gFileList" | fmt -w 10
+        tResult=$(git config --get gitproj.config.remote-raw-origin)
+        cat <<EOF | fmt
+
+Use "git proj push" to save binary files, in raw/, to $tResult
+Run "git proj -h | less" for a description of how git-proj
+can manage large binary files and keep your git repo nimble.
+
+EOF
+        return 1
+    fi
+    return 0
+} # fCheckNotRaw
+
+# --------------------
+fCheckBigFiles() {
+    local tMaxSize
+    local tSize
+    local tFile
+    local tResult
+
+    tResult=$(git config --get --bool gitproj.hook.check-for-big-files)
+    if [[ "$tResult" != "true" ]]; then
+        return 0
+    fi
+
+    tMaxSize=$(git config --get --int gitproj.hook.binary-file-size)
+    if [[ -z "$tMaxSize" ]]; then
+        tMaxSize=10000
+    fi
+    if [[ $tMaxSize -le 10000 ]]; then
+        tMaxSize=10000
+    fi
+
+    gFileList=""
+    for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
+        if [[ ! -f "$tFile" ]]; then
+            continue
+        fi
+        if ! fIsBinary $tFile; then
+            continue
+        fi
+        tSize=$(ls -l $tFile | awk '{print $5}')
+        if [[ $tSize -gt $tMaxSize ]]; then
+            fReport 0 1 $tFile "size $tSize > $tMaxSize" $LINENO
+        fi
+    done
+    if [[ -n "$gFileList" ]]; then
+        let ++gErr
+        echo
+        echo "These files were > $tMaxSize:"
+        echo "$gFileList" | fmt -w 10
+        cat <<EOF | fmt
+
+Large binary files should NOT be committed to git.  Move the files to
+the top raw/ dir, or use "git proj move FILE" to move the file to the
+raw/ dir and it will make a symlink to the files old location. Or
+change config gitproj.hook.binary-file-size to be larger. Or
+disable this check, and live with a massive git repo.
+
+EOF
+        return 1
+    fi
+    return 0
+} # fCheckBigFiles
+
+# ========================================
+# Main
+
+gAgainst=HEAD
+if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+    # Initial commit: diff against an empty tree object
+    gAgainst=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+gVerbose=$(git config --get --bool gitproj.hook.verbose)
+if [[ -z "$gVerbose" ]]; then
+    gVerbose=true
+fi
+fEnabled
+fCheckFileNames
+fCheckWhiteSpace
+fCheckForTabs
+fCheckSyntax
+fCheckShell
+fFixFmt
+fCheckNotRaw
+fCheckBigFiles
+
+exit $gErr

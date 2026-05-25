@@ -1076,8 +1076,8 @@ fComMenu() {
         IFS="$tIFS"
         for ((tItem = 1; tItem <= tSize; tItem++)); do
             tMenu[$tItem]="$(eval echo $(echo \${${pMenu}[$tItem]}))"
-            echo -e "  $tItem)\n      ${tMenu[$tItem]}" |
-                sed 's/{[^}]*} //g' | fmt -t
+            echo -e "  $tItem)\n      ${tMenu[$tItem]}" \
+                | sed 's/{[^}]*} //g' | fmt -t
         done
         echo -n "$tPrompt "
         read tSelect

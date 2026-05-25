@@ -254,7 +254,7 @@ time.
         man         - man page
         html        - HTML page
         md          - Markdown
-        
+
         int         - Output internal documentation as text.
         int-html    - Output internal documentation as html.
         int-md      - Output internal documentation as markdown.
@@ -389,7 +389,7 @@ This package is for testing the vid-tag script. See the NOTES section
 ## vid-tag-test-input.zip (4.5G)
 
 Optional video files used by vid-tag.test. Only needed for
-the testCli\*Slow tests. 
+the testCli\*Slow tests.
 
     MVI_0107.MP4
     MVI_0110.MP4
@@ -487,4 +487,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.3.2
+cVer=2.3.3

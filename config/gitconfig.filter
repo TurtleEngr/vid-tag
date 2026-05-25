@@ -1,0 +1,3 @@
+[filter "bash-fmt"]
+	clean = bash-fmt -
+	smudge = cat

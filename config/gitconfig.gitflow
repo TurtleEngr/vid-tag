@@ -1,0 +1,17 @@
+[gitflow "branch"]
+	main = main
+	develop = develop
+	master = main
+[gitflow "prefix"]
+	# Start from develop branch
+	feature = feature/
+	# Start from develop branch (use major.minor.fix numbers)
+	release = release/
+	# Start from main branch
+	hotfix = hotfix/
+	# Start from develop or release branch
+	bugfix = bug/
+	# Start from main branch (manually merged back, if needed)
+	support = support/
+	# Added to release name, on "finish". Confusing, best to leave blank
+	versiontag =

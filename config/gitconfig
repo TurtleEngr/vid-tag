@@ -1,0 +1,58 @@
+[core]
+	filemode = true
+	autocrlf = false
+	editor = /usr/bin/emacs
+	excludesFile = ~/.gitignore_global
+	ignorecase = true
+	logAllRefUpdates = true
+	quotePath = false
+	trustctime = false
+[color]
+        ui = false
+[alias]
+	br = branch
+	br-all = branch -r
+	ci = commit
+	co = checkout
+	df = diff
+	#merge = merge --no-ff
+	origin = config --get remote.origin.url
+	raw-origin = config --get gitproj.config.remote-raw-dir
+	push-tags = push --tags origin
+	revert-all = reset --hard HEAD
+	st = status -s
+	top = rev-parse --show-toplevel
+	tracked = remote show origin
+	raw-origin = config --get remote-raw-origin
+        #tag = tag -s --tags
+[gitflow "branch"]
+	main = main
+	develop = develop
+	master = main
+[gitflow "prefix"]
+	# Start from develop branch
+	feature = feature/
+	# Start from develop branch (use major.minor.fix numbers)
+	release = release/
+	# Start from main branch
+	hotfix = hotfix/
+	# Start from develop or release branch
+	bugfix = bug/
+	# Start from main branch (manually merged back, if needed)
+	support = support/
+	# Added to release name, on "finish". Confusing, best to leave blank
+	versiontag =
+[filter "bash-fmt"]
+	clean = bash-fmt -
+	smudge = cat
+[gitproj "hook"]
+        verbose = true
+        pre-commit-enabled = true
+        check-file-names = true
+        check-in-raw = true
+        check-whitespace = true
+        check-for-tabs = true
+        tab-include-list = *.sh|*.inc|*.pod|*.md
+        tab-exclude-list = Makefile
+        check-for-big-files = true
+        binary-file-size = 40k

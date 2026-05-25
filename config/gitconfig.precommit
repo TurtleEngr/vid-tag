@@ -1,0 +1,11 @@
+[gitproj "hook"]
+        verbose = true
+        pre-commit-enabled = true
+        check-file-names = true
+        check-in-raw = false
+        check-whitespace = true
+        check-for-tabs = true
+        tab-include-list = *.sh|*.inc|*.pod|*.md|vid-tag
+        tab-exclude-list = Makefile
+        check-for-big-files = true
+        binary-file-size = 40k

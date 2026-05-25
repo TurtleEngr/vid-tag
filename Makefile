@@ -53,7 +53,7 @@ usage :
 	@echo 'dist-clean - remove all built files'
 	@echo 'check-ext  - check for newer external files (optional)'
 	@echo 'required-prog - get and check for required prog'
-	@echo 'config-git - Setup git for CI/CD and commit checks'
+	@echo 'git-config - Setup git for CI/CD and commit checks'
 	@echo 'build      - Update in files'
 	@echo 'test       - Quick tests (about 10sec)'
 	@echo 'test-all   - Test with video files; slow (about 16min)'
@@ -112,7 +112,7 @@ install-prog : /usr/local/bin/shfmt
 	sudo ln -sf /usr/local/bin/shfmt_v3.10.0_linux_amd64 /usr/local/bin/shfmt
 
 # --------------------
-config-git : .gitattributes .git/hooks/pre-commit
+git-config : .gitattributes .git/hooks/pre-commit
 	if ! grep -q 'path = ../config/gitconfig.includes' .git/config; then \
 		echo '[include]' >>.git/config; \
 		echo '    path = ../config/gitconfig.includes' >>.git/config; \

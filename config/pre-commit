@@ -29,7 +29,7 @@ fIsBinary() {
 fIsBash() {
     local pFile="$1"
 
-    head -n 2 <$pFile | grep -Eq '#!/bin/bash|#!/usr/bin/env bash' >/dev/null 2>&1
+    head -n 2 <"$pFile" | grep -Eq '#!/bin/bash|#!/usr/bin/env bash' >/dev/null 2>&1
     return $?
 } # fIsBash
 
@@ -67,6 +67,8 @@ fReport() {
 
 # --------------------
 fEnabled() {
+    local tEnabled
+
     tEnabled=$(git config --get --bool gitproj.hook.pre-commit-enabled)
     if [[ "$tEnabled" != "true" ]]; then
         echo "Skipping pre-commit"
@@ -113,7 +115,7 @@ fCheckFileNames() {
         echo "$gFileList" | fmt -w 10
         cat <<EOF
 
-Names can only use letters, numbers, hypen, dash, and periods.
+Names can only use letters, numbers, hypen, and periods.
 Names cannot begin with hyphens or end with periods.
 Names cannot be all periods.
 If you had a filename with spaces in it, the spaces were replaced with '!'.
@@ -136,6 +138,7 @@ fCheckWhiteSpace() {
     fi
 
     # If there are whitespace errors, print the offending file names
+    gFileList=""
     for tFile in $(git diff-index --color=never --check --cached $gAgainst -- | tr ' ' '!' | awk '/trailing/ {gsub(/:.*/,"",$1); print $1}' | sort -u); do
         tFile=${tFile%%:*}
         fReport 0 1 $tFile "trailing whitespace" $LINENO
@@ -170,6 +173,7 @@ fCheckForTabs() {
 
     # If there are tab, in tIncList, but not tExcList, print file
     # Also skip binary files
+    gFileList=""
     for tFile in $(git diff --cached --name-only --diff-filter=ACR $gAgainst | tr ' ' '!'); do
         if [[ ! -f "$tFile" ]]; then
             continue
@@ -177,11 +181,13 @@ fCheckForTabs() {
         if fIsBinary $tFile; then
             continue
         fi
-        if $(echo $tFile | grep -qvE "$tIncList"); then
+        echo $tFile | grep -qvE "$tIncList" >/dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
             continue
         fi
         if [[ -n "$tExcList" ]]; then
-            if $(echo $tFile | grep -qE "$tExcList"); then
+            echo $tFile | grep -qE "$tExcList" >/dev/null 2>&1
+            if [[ $? -eq 0 ]]; then
                 continue
             fi
         fi
@@ -270,6 +276,8 @@ fCheckShell() {
         tSkip='SC1090,SC2003,SC2086,SC2088,SC2155,SC2164,SC2219,SC2230,SC2103,SC2181'
         if ! shellcheck -x -e $tSkip "$tFile" >/dev/null 2>&1; then
             echo "Warning: shellcheck errors in $tFile. See bash-lint [$LINENO]" >&2
+            tFile=${tFile%%:*}
+            gFileList="$gFileList $tFile"
         fi
     done
 
@@ -310,6 +318,8 @@ fFixFmt() {
 
         if ! bash-fmt "$tFile" >/dev/null 2>&1; then
             echo "Warning: Reformatted $tFile. See bash-fmt [$LINENO]" >&2
+            tFile=${tFile%%:*}
+            gFileList="$gFileList $tFile"
         fi
     done
 
@@ -426,6 +436,8 @@ fCheckFileNames
 fCheckWhiteSpace
 fCheckForTabs
 fCheckSyntax
+fCheckShell
+fFixFmt
 fCheckNotRaw
 fCheckBigFiles
 

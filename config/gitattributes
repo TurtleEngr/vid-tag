@@ -1,5 +1,4 @@
-vid-tag filter=bash-fmt2
-*.sh    filter=bash-fmt2
-*.inc   filter=bash-fmt2
-*.test  filter=bash-fmt2
-*.tst   filter=bash-fmt
+vid-tag filter=bash-fmt
+*.sh    filter=bash-fmt
+*.inc   filter=bash-fmt
+*.test  filter=bash-fmt

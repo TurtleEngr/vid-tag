@@ -1172,8 +1172,8 @@ fConvertDate() {
     local tNorm
 
     # Normalise date separator: "YYYY:MM:DD HH:MM:SS" -> "YYYY-MM-DD HH:MM:SS"
-    tNorm=$(echo "$pRaw" |
-        sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\)/\1-\2-\3/')
+    tNorm=$(echo "$pRaw" \
+        | sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\)/\1-\2-\3/')
 
     gFileDateShort=$('date' -d "$tNorm" +"%Y-%m-%d")
     gFileDateLong=$('date' -d "$tNorm" +"%Y-%m-%d %a")

@@ -149,11 +149,8 @@ README.md : vid-tag vid-tag.inc Makefile
 	-./vid-tag -H md >README.md
 
 # --------------------
-test : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
+test :
 	./vid-tag.test -T fast
-	./vid-tag -n -e testevent MVI_0107.MP4  MVI_0110.MP4  MVI_0746.MP4
-	@echo "Review: vid-tag.conf"
-	@echo "Review: vid-tag-example.txt"
 
 test-all : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
 	./vid-tag.test -T all

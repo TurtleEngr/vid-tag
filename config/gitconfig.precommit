@@ -5,6 +5,9 @@
         check-in-raw = false
         check-whitespace = true
         check-for-tabs = true
+        check-bash-shell = true
+        check-bash-syntax = true
+        fix-bash-fmt = true
         tab-include-list = *.sh|*.inc|*.pod|*.md|vid-tag
         tab-exclude-list = Makefile
         check-for-big-files = true

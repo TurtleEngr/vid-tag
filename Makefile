@@ -23,6 +23,8 @@ mReqProg = \
 	ffmpeg \
 	sed \
 	shfmt \
+	shellcheck \
+	tidy \
 	tr \
 	./bash-com.inc \
 	./bash-com.test \
@@ -30,6 +32,13 @@ mReqProg = \
 	./vid-tag \
 	./vid-tag.inc \
 	./vid-tag.test
+
+mExternal = \
+	bash-com.inc \
+	bash-com.test \
+	config/bash-fmt \
+	config/rm-trailing-sp \
+	shunit2.1
 
 cRelServer = moria.whyayh.com
 cRelDIr = /rel/released/software/own/vid-tag/
@@ -42,12 +51,13 @@ usage :
 	@echo 'Usage:'
 	@echo 'clean      - remove all backup files'
 	@echo 'dist-clean - remove all built files'
-	@echo 'check      - check for newer dependent files'
-	@echo 'build      - Update in files'
+	@echo 'check-ext  - check for newer external files (optional)'
 	@echo 'required-prog - get and check for required prog'
 	@echo 'config-git - Setup git for CI/CD and commit checks'
+	@echo 'build      - Update in files'
 	@echo 'test       - Quick tests (about 10sec)'
 	@echo 'test-all   - Test with video files; slow (about 16min)'
+	@echo 'install    - local install (optional)'
 	@echo 'package    - create the package zip file'
 	@echo 'package-test - create the test package zip file'
 	@echo 'get-test   - Get video files for tests 4.4GB'
@@ -64,31 +74,22 @@ dist-clean : clean
 	rm -rf pkg
 
 # --------------------
-check : check-bash-com.inc check-bash-com.test check-shunit2.1
-	echo "If there are differences, copy from ~/bin"
+check-ext : $(mExternal)
 
-check-bash-com.inc : ~/bin/bash-com.inc
-	-diff $? bash-com.inc | grep -v Revision:
+bash-com.inc : ~/bin/bash-com.inc
+	'cp' -i $? $@
 
-check-bash-com.test : ~/bin/bash-com.test
-	-diff $? bash-com.test | grep -v Revision:
+bash-com.test : ~/bin/bash-com.test
+	'cp' -i $? $@
 
-check-shunit2.1 : ~/bin/shunit2.1
-	-diff $? shunit2.1 | grep -v Revision:
+shunit2.1 : ~/bin/shunit2.1
+	'cp' -i $? $@
 
-# --------------------
-build : README.html
-	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
-		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
-	done
-	-git ci -am Updated
+config/rm-trailing-sp : ~/bin/rm-trailing-sp
+	'cp' -i $? $@
 
-README.html : README.md Makefile
-	-markdown $? >$@
-	-tidy -m -config ./tidyxhtml.conf $@
-
-README.md : vid-tag vid-tag.inc Makefile
-	-./vid-tag -H md >README.md
+config/bash-fmt : ~/bin/bash-fmt
+	'cp' -i $? $@
 
 # --------------------
 required-prog : install-prog
@@ -122,6 +123,20 @@ config-git : .gitattributes .git/hooks/pre-commit
 
 .git/hooks/pre-commit : config/pre-commit
 	cp $? $@
+
+# --------------------
+build : README.html
+	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
+		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
+	done
+	-git ci -am Updated
+
+README.html : README.md Makefile
+	-markdown $? >$@
+	-tidy -m -config ./tidyxhtml.conf $@
+
+README.md : vid-tag vid-tag.inc Makefile
+	-./vid-tag -H md >README.md
 
 # --------------------
 test : MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4

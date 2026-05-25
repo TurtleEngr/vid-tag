@@ -132,7 +132,7 @@ build : README.html
 	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
-	-git ci -am Updated
+	#git ci -am Updated
 
 README.html : README.md Makefile
 	-markdown $? >$@

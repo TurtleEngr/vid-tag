@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 2.3.2
+cVer = 2.3.3
 
 mDepPkg = \
 	ffmpeg \

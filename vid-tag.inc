@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-export cVer=2.3.2
+export cVer=2.3.3
 export cBin
 export cExampleFile
 export cOutputDir
@@ -610,7 +610,7 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.3.2
+cVer=2.3.3
 
 =cut
 

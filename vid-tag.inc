@@ -124,7 +124,12 @@ the timestamp metadata values.
 
 =begin html
 
-<p>Status: <a href="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml"><img src="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml/badge.svg" alt="test" title="" /></a> <img src="https://img.shields.io/github/v/tag/TurtleEngr/vid-tag?label=release-tag"/> <img src="https://img.shields.io/github/issues-search?query=repo%3ATurtleEngr%2Fvid-tag%20is%3Aopen&amp;style=flat&amp;label=issues"/> <img src="https://img.shields.io/github/license/TurtleEngr/vid-tag"/></p>
+<p>Status:
+<a href="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml"><img src="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml/badge.svg" alt="test" title="" /></a>
+<img src="https://img.shields.io/github/v/tag/TurtleEngr/vid-tag?label=release-tag"/>
+<img src="https://img.shields.io/github/issues-search?query=repo%3ATurtleEngr%2Fvid-tag%20is%3Aopen&amp;style=flat&amp;label=issues"/>
+<img src="https://img.shields.io/github/license/TurtleEngr/vid-tag"/>
+</p>
 
 =end html
 

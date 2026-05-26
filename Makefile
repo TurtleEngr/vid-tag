@@ -164,7 +164,7 @@ install : build
 	cp -i vid-tag vid-tag.inc vid-tag.test bash-com.inc bash-com.test $(mInstallDir)
 
 package : build pkg pkg/vid-tag-$(cVer).zip
-	git ci -am Updated
+	-git ci -am Updated
 	-git push --tags --force origin develop
 
 pkg :

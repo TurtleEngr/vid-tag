@@ -499,24 +499,20 @@ HOME, USER, PATH
 
 =head2 vid-tag-N.N.zip
 
-    vid-tag      - this script
-    vid-tag.inc  - vid-tag functions
-    vid-tag.conf - sample config file describing tags for an event
-    bash-com.inc - utility functions
-    LICENSE      - GPLv2
+    vid-tag       - this script
+    vid-tag.inc   - vid-tag functions
+    vid-tag.conf  - sample config file describing tags for an event
+    bash-com.inc  - utility functions
+    vid-tag.test  - unit and CLI integration tests
+    bash-com.test - test utility functions
+    shunit2.1     - unit test framework for vid-tag.test
+    LICENSE       - GPLv2
 
 =head2 Generated files
 
     vid-tag.conf - if missing, it will be created with defaults and CLI args
     vid-tag-example.txt - lists the changes to files based on vid-tag.conf
     output/      - generated directory, with renamed copies of files
-
-=head2 vid-tag-test-N.N.zip
-
-This package is for testing the vid-tag script. See the NOTES section
-
-    vid-tag.test - optional unit and CLI integration tests
-    shunit2.1    - unit test framework for vid-tag.test
 
 =head2 vid-tag-test-input.zip (4.5G)
 

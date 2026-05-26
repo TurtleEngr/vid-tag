@@ -52,6 +52,7 @@ mExternal = \
 
 cRelServer = moria.whyayh.com
 cRelDIr = /rel/released/software/own/vid-tag/
+cDevDIr = /rel/development/software/own/vid-tag/
 
 # ----------------------------------------
 # Main targets
@@ -81,8 +82,8 @@ clean :
 	-rm pod2htmd.tmp
 
 dist-clean : clean
-	rm MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
-	rm -rf pkg
+	-rm MVI_0107.MP4 MVI_0110.MP4 MVI_0746.MP4
+	-rm -rf pkg
 
 # --------------------
 check-ext : $(mExternal)
@@ -143,7 +144,6 @@ build : README.html
 	for i in vid-tag vid-tag.inc vid-tag.test README.md README.html; do \
 		sed -i -e 's/cVer=[0-9.]*/cVer=$(cVer)/' $$i; \
 	done
-	#git ci -am Updated
 
 README.html : README.md Makefile
 	-markdown $? >$@
@@ -164,20 +164,18 @@ install : build
 	cp -i vid-tag vid-tag.inc vid-tag.test bash-com.inc bash-com.test $(mInstallDir)
 
 package : build pkg pkg/vid-tag-$(cVer).zip
+	git ci -am Updated
 	-git push --tags --force origin develop
 
 pkg :
 	mkdir -p $@
 
 pkg/vid-tag-$(cVer).zip :
-	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.conf bash-com.inc
-
-package-test : package pkg/vid-tag-test-$(cVer).zip pkg/vid-tag-test-input.zip
-
-pkg/vid-tag-test-$(cVer).zip :
-	zip $@ vid-tag.test bash-com.test shunit2.1
+	zip $@ README.html LICENSE vid-tag vid-tag.inc vid-tag.test vid-tag.conf bash-com.inc bash-com.test shunit2.1
 
 # --------------------
+package-test : pkg/vid-tag-test-input.zip
+
 get-test : pkg
 	cd pkg; curl -O https://$(cRelServer)$(cRelDIr)/vid-tag-test-input.zip
 	unzip pkg/vid-tag-test-input.zip
@@ -212,7 +210,5 @@ release : package
 
 release-test : package-test
 	read -p "You must have a user on moria. ^c to quit"
-	rsync -aP pkg/vid-tag-test-$(cVer).zip \
+	rsync -aP pkg/vid-tag-test-input.zip \
 		$(cRelServer):$(cRelDIr)
-
-#		pkg/vid-tag-test-input.zip \

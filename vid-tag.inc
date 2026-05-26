@@ -99,6 +99,17 @@ fUsage() {
 Rename video files and set Title, Caption, and Keywords metadata.
 And generate thumbnails.
 
+=begin html
+
+<p>
+<a href="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml"><img src="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml/badge.svg" alt="test" title="" /></a>
+<a href="https://github.com/TurtleEngr/vid-tag/tags"><img src="https://img.shields.io/github/v/tag/TurtleEngr/vid-tag?label=release-tag" alt="Tag" title=""/></a>
+<a href="https://github.com/TurtleEngr/vid-tag/issues"><img src="https://img.shields.io/github/issues-search?query=repo%3ATurtleEngr%2Fvid-tag%20is%3Aopen&amp;style=flat&amp;label=issues"/></a>
+<a href="https://github.com/TurtleEngr/vid-tag/blob/develop/LICENSE"><img src="https://img.shields.io/github/license/TurtleEngr/vid-tag"/></a>
+</p>
+
+=end html
+
 =head1 SYNOPSIS
 
 First run. Create initial config file: F<./vid-tag.conf>
@@ -121,17 +132,6 @@ vid-tag renames one or more video files and writes Title, Caption, and
 Keywords metadata using the C<exiftool>.  The file's C<Create Date>
 metadata is read and used to date-time-stamp the output file, and all
 the timestamp metadata values.
-
-=begin html
-
-<p>Status:
-<a href="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml"><img src="https://github.com/TurtleEngr/vid-tag/actions/workflows/test.yml/badge.svg" alt="test" title="" /></a>
-<a href="https://github.com/TurtleEngr/vid-tag/tags"><img src="https://img.shields.io/github/v/tag/TurtleEngr/vid-tag?label=release-tag" alt="Tag" title=""/></a>
-<a href="https://github.com/TurtleEngr/vid-tag/issues"><img src="https://img.shields.io/github/issues-search?query=repo%3ATurtleEngr%2Fvid-tag%20is%3Aopen&amp;style=flat&amp;label=issues"/></a>
-<a href="https://github.com/TurtleEngr/vid-tag/blob/develop/LICENSE"><img src="https://img.shields.io/github/license/TurtleEngr/vid-tag"/></a>
-</p>
-
-=end html
 
 Files are copied to the ./output/ directory, so the original files are
 not changed in any way.

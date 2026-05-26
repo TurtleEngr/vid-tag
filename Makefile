@@ -15,6 +15,8 @@ mDepPkg = \
 	ffmpeg \
 	imagemagick \
 	libimage-exiftool-perl \
+	libpod-markdown-perl \
+	markdown \
 	shellcheck \
 	tidy
 
@@ -23,6 +25,8 @@ mReqProg = \
 	convert \
 	exiftool \
 	ffmpeg \
+	markdown \
+	pod2markdown \
 	sed \
 	shfmt \
 	shellcheck \

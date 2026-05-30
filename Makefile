@@ -109,6 +109,7 @@ required-prog : install-prog
 		echo "Verify: $$i"; \
 		if ! which $$i >/dev/null 2>&1; then \
 			echo "Error: missing $$i"; \
+			dpkg -l $$i; \
 			exit 1; \
 		fi; \
 	done

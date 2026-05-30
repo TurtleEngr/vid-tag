@@ -24,7 +24,7 @@ mReqProg = \
 	awk \
 	convert \
 	exiftool \
-	ffmpeg \
+	/usr/bin/ffmpeg \
 	markdown \
 	pod2markdown \
 	sed \
@@ -116,13 +116,12 @@ required-prog : install-prog
 install-prog : /usr/local/bin/shfmt
 	@for i in $(mDepPkg); do \
 		echo "Check for: $$i"; \
-		if ! dpkg -l $$i >/dev/null 2>&1; then \
+		if ! dpkg -l $$i 2>/dev/null | grep -q '^ii'; then \
 			echo "Install: $$i"; \
 			sudo apt-get install -y $$i; \
 			sleep 1; \
 		fi; \
 	done
-	sleep 10
 
 /usr/local/bin/shfmt :
 	curl -u "guest:guest" -O https://$(cRelServer)//rel/archive/software/ThirdParty/shfmt/shfmt_v3.10.0_linux_amd64

@@ -406,8 +406,6 @@ Required: Linux OS (see CAVEATS for Windows and MacOS)
 
 Required: bash, exiftool, ffmpeg, convert, sed
 
-Optional: vid-tag.test
-
 # NOTES
 
 All of this code is maintained at:
@@ -480,23 +478,19 @@ repo, add your changes, then send me a "pull" request, to the
 
 # DIAGNOSTICS
 
-This tool comes with a test script to verify the vid-tag script is
-working OK.  Download these files from:
+This tool comes with a test script, vid-tag.test, to verify the
+vid-tag script is working OK. Optional test video files
+can be found in vid-tag-test-input.zip at:
+
 https://moria.whyayh.com/rel/released/software/own/vid-tag/
-(the VER should match vid-tag's VER):
-
-    vid-tag-test-VER.zip
-    vid-tag-test-input.zip (4.5G) - optional
-
-Unzip vid-tag-test-VER.zip to the install dir.
 
 Unzip vid-tag-test-input.zip to a "test" directory. In the test
 directory run:
 
     ./vid-tag.test -T all
 
-If you don't have space for the vid-tag-test-input.zip files, just use
-the "fast" test option for vid-tag.test. For example:
+If you don't have space for the 4.5GB vid-tag-test-input.zip files,
+just use the "fast" test option for vid-tag.test. For example:
 
     vid-tag.test -T fast
 
@@ -515,4 +509,4 @@ Turtle Engineer
 
 GPLv2 (c) Copyright (See LICENSE file for terms.)
 
-cVer=2.3.4
+cVer=2.3.5

@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 2.3.4
+cVer = 2.3.5
 
 mInstallDir = ~/bin
 

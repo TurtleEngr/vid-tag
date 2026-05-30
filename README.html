@@ -375,7 +375,6 @@ MVI_0746.MP4
   <h1>SEE ALSO</h1>
   <p>Required: Linux OS (see CAVEATS for Windows and MacOS)</p>
   <p>Required: bash, exiftool, ffmpeg, convert, sed</p>
-  <p>Optional: vid-tag.test</p>
   <h1>NOTES</h1>
   <p>All of this code is maintained at:</p>
   <pre><code>https://github.com/TurtleEngr/vid-tag
@@ -423,20 +422,16 @@ MVI_0746.MP4
   know github, fork the vid-tag repo, add your changes, then send me a "pull"
   request, to the "develop" branch. (See the For Developers section.)</p>
   <h1>DIAGNOSTICS</h1>
-  <p>This tool comes with a test script to verify the vid-tag script is
-  working OK. Download these files from:
-  https://moria.whyayh.com/rel/released/software/own/vid-tag/ (the VER should
-  match vid-tag's VER):</p>
-  <pre><code>vid-tag-test-VER.zip
-vid-tag-test-input.zip (4.5G) - optional
-</code></pre>
-  <p>Unzip vid-tag-test-VER.zip to the install dir.</p>
+  <p>This tool comes with a test script, vid-tag.test, to verify the vid-tag
+  script is working OK. Optional test video files can be found in
+  vid-tag-test-input.zip at:</p>
+  <p>https://moria.whyayh.com/rel/released/software/own/vid-tag/</p>
   <p>Unzip vid-tag-test-input.zip to a "test" directory. In the test
   directory run:</p>
   <pre><code>./vid-tag.test -T all
 </code></pre>
-  <p>If you don't have space for the vid-tag-test-input.zip files, just use
-  the "fast" test option for vid-tag.test. For example:</p>
+  <p>If you don't have space for the 4.5GB vid-tag-test-input.zip files, just
+  use the "fast" test option for vid-tag.test. For example:</p>
   <pre><code>vid-tag.test -T fast
 </code></pre>
   <h1>BUGS</h1>
@@ -447,6 +442,6 @@ vid-tag-test-input.zip (4.5G) - optional
   <p>Turtle Engineer</p>
   <h1>HISTORY</h1>
   <p>GPLv2 (c) Copyright (See LICENSE file for terms.)</p>
-  <p>cVer=2.3.4</p>
+  <p>cVer=2.3.5</p>
 </body>
 </html>

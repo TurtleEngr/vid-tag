@@ -24,7 +24,7 @@ mReqProg = \
 	awk \
 	convert \
 	exiftool \
-	/usr/bin/ffmpeg \
+	ffmpeg \
 	markdown \
 	pod2markdown \
 	sed \

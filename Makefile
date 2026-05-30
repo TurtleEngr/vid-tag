@@ -106,6 +106,7 @@ config/bash-fmt : ~/bin/bash-fmt
 # --------------------
 required-prog : install-prog
 	@for i in $(mReqProg); do \
+		echo 'Verify: $$i'; \
 		if ! which $$i >/dev/null 2>&1; then \
 			echo "Error: missing $$i"; \
 			exit 1; \
@@ -114,7 +115,9 @@ required-prog : install-prog
 
 install-prog : /usr/local/bin/shfmt
 	@for i in $(mDepPkg); do \
+		echo 'Check for: $$i'; \
 		if ! dpkg -l $$i >/dev/null 2>&1; then \
+			echo 'Install: $$i'; \
 			sudo apt-get install -y $$i; \
 		fi; \
 	done

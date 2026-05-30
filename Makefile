@@ -119,8 +119,10 @@ install-prog : /usr/local/bin/shfmt
 		if ! dpkg -l $$i >/dev/null 2>&1; then \
 			echo "Install: $$i"; \
 			sudo apt-get install -y $$i; \
+			sleep 1; \
 		fi; \
 	done
+	sleep 10
 
 /usr/local/bin/shfmt :
 	curl -u "guest:guest" -O https://$(cRelServer)//rel/archive/software/ThirdParty/shfmt/shfmt_v3.10.0_linux_amd64

@@ -105,24 +105,30 @@ config/bash-fmt : ~/bin/bash-fmt
 
 # --------------------
 required-prog : install-prog
-	@for i in $(mReqProg); do \
+	tErr=0; \
+	for i in $(mReqProg); do \
 		echo "Verify: $$i"; \
 		if ! which $$i >/dev/null 2>&1; then \
 			echo "Error: missing $$i"; \
-			dpkg -l $$i; \
-			exit 1; \
+			tErr=1; \
 		fi; \
-	done
+	done; \
+	if [[ $$tErr -ne 0 ]]; then \
+		exit 1; \
+	fi
 
 install-prog : /usr/local/bin/shfmt
-	@for i in $(mDepPkg); do \
-		echo "Check for: $$i"; \
-		if ! dpkg -l $$i 2>/dev/null | grep -q '^ii'; then \
-			echo "Install: $$i"; \
-			sudo apt-get install -y $$i; \
-			sleep 1; \
-		fi; \
-	done
+	sudo apt-get update
+	sudo apt-get install -y $(mDepPkg)
+
+#	for i in $(mDepPkg); do \
+#		echo "Check for: $$i"; \
+#		if ! dpkg -l $$i 2>/dev/null | grep -q '^ii'; then \
+#			echo "Install: $$i"; \
+#			sudo apt-get install -y $$i; \
+#			sleep 1; \
+#		fi; \
+#	done
 
 /usr/local/bin/shfmt :
 	curl -u "guest:guest" -O https://$(cRelServer)//rel/archive/software/ThirdParty/shfmt/shfmt_v3.10.0_linux_amd64

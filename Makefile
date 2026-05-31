@@ -119,16 +119,7 @@ required-prog : install-prog
 
 install-prog : /usr/local/bin/shfmt
 	sudo apt-get update
-	sudo apt-get install -y $(mDepPkg)
-
-#	for i in $(mDepPkg); do \
-#		echo "Check for: $$i"; \
-#		if ! dpkg -l $$i 2>/dev/null | grep -q '^ii'; then \
-#			echo "Install: $$i"; \
-#			sudo apt-get install -y $$i; \
-#			sleep 1; \
-#		fi; \
-#	done
+	sudo apt-get install -q -y $(mDepPkg)
 
 /usr/local/bin/shfmt :
 	curl -u "guest:guest" -O https://$(cRelServer)//rel/archive/software/ThirdParty/shfmt/shfmt_v3.10.0_linux_amd64

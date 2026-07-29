@@ -7,7 +7,7 @@
 # --------------------
 # Macros
 SHELL = /bin/bash
-cVer = 2.3.4
+cVer = 2.3.5
 
 mInstallDir = ~/bin
 
@@ -105,19 +105,21 @@ config/bash-fmt : ~/bin/bash-fmt
 
 # --------------------
 required-prog : install-prog
-	@for i in $(mReqProg); do \
+	tErr=0; \
+	for i in $(mReqProg); do \
+		echo "Verify: $$i"; \
 		if ! which $$i >/dev/null 2>&1; then \
 			echo "Error: missing $$i"; \
-			exit 1; \
+			tErr=1; \
 		fi; \
-	done
+	done; \
+	if [[ $$tErr -ne 0 ]]; then \
+		exit 1; \
+	fi
 
 install-prog : /usr/local/bin/shfmt
-	@for i in $(mDepPkg); do \
-		if ! dpkg -l $$i >/dev/null 2>&1; then \
-			sudo apt-get install -y $$i; \
-		fi; \
-	done
+	sudo apt-get update
+	sudo apt-get install -q -y $(mDepPkg)
 
 /usr/local/bin/shfmt :
 	curl -u "guest:guest" -O https://$(cRelServer)//rel/archive/software/ThirdParty/shfmt/shfmt_v3.10.0_linux_amd64

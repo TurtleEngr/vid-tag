@@ -1397,9 +1397,9 @@ fExampleCollectSplit() {
     local pFile="$2"
     local pCreateDate="$3"
 
-    local -i tH
-    local -i tM
-    local -i tS
+    local tH
+    local tM
+    local tS
     local -i tMin
     local -i tNumParts
     local -i tIdx
@@ -1415,13 +1415,14 @@ fExampleCollectSplit() {
     if [[ -z "$tLength" ]]; then
         return 0
     fi
-    IFS=':' read -r tH tM tS <<<"$tLength"
+    IFS=':'
+    read -r tH tM tS <<<"$tLength"
     IFS=' '
 
-    # Strip any leading zeros so bash arithmetic doesn't treat them as octal.
-    tH=$((10#$tH))
-    tM=$((10#$tM))
-    tS=$((10#$tS))
+    # Strip any leading zeros
+    tH=${tH#0}
+    tM=${tM#0}
+    tS=${tS#0}
 
     # Same threshold as fProcessFile: <= 10 min → no split.
     ((tMin = tH * 60 + tM))
@@ -1611,9 +1612,9 @@ fAddMin() {
 
     local tDate
     local tTime
-    local -i tH
-    local -i tM
-    local -i tS
+    local tH
+    local tM
+    local tS
 
     # Strip the label, keeping only "YYYY:MM:DD HH:MM:SS"
     tDate="${pRaw##*: }"
@@ -1622,12 +1623,14 @@ fAddMin() {
     tTime="${tDate##* }"
     tDate="${tDate%% *}"
 
-    IFS=':' read -r tH tM tS <<<"$tTime"
+    IFS=':'
+    read -r tH tM tS <<<"$tTime"
     IFS=' '
 
-    # Remove any leading zeros for arithmetic
-    tM=$((10#$tM))
-    tH=$((10#$tH))
+    # Strip any leading zeros
+    tH=${tH#0}
+    tM=${tM#0}
+    tS=${tS#0}
 
     ((tM += pMin))
     if [[ $tM -ge 60 ]]; then
@@ -1846,9 +1849,9 @@ fProcessFile() {
     # Rename + tag a single file.  Must be called with CWD == ./output/
     local pFile="$1"
 
-    local -i tH
-    local -i tM
-    local -i tS
+    local tH
+    local tM
+    local tS
     local -i tIncMin
     local -i tNumParts
     local tBase
@@ -1947,8 +1950,14 @@ fProcessFile() {
     # ----------
     # See if the file needs to be split. I.e. greater than 10 min
     tLength=$(ffmpeg -i $tNewName 2>&1 | grep -oP 'Duration: \K[\d:]+(?=\.)')
-    IFS=':' read -r tH tM tS <<<"$tLength"
+    IFS=':'
+    read -r tH tM tS <<<"$tLength"
     IFS=' '
+
+    # Strip any leading zeros
+    tH=${tH#0}
+    tM=${tM#0}
+    tS=${tS#0}
     ((tMin = $tH * 60 + $tM))
 
     # Compute the split-part count (1 = not split).  Used both for the

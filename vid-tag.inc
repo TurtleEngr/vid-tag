@@ -65,7 +65,7 @@ fUsage() {
 
     case $pStyle in
         short | usage | man | long | text | md)
-            fComUsage -f $cBin/$cName.inc -s $pStyle
+            fComUsage -f $cBin/$cName.inc -s $pStyle | more
             ;;
         html)
             fComUsage -f $cBin/$cName.inc -s $pStyle -t "$cName Usage"
